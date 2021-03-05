@@ -1,9 +1,11 @@
 *
-!.*
 !Core/
 !Core/Inc
 !Core/Src
 !Core/Inc/*
 !Core/Src/*
 !*.ioc
+!README.md
+!*.xml
+!*.ld
 
