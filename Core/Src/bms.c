@@ -20,6 +20,7 @@ void initBms()
     bms.id = 0xff;
     init_accum();
     init_afe();
+    initLTC();
 }
 
 void initScheduler(uint16_t f1)
@@ -104,11 +105,12 @@ void mainLoop()
         afeProcess();
         // TODO: Ensure that model runs prior to calculating new balance flags
         calcBalance();
+        acquireTemp();
 
         // 5 ms functions
         if (scheduler.os_ticks % 5 == 0)
         {
-
+            trackAccum();
         }
 
         // 50 ms functions
@@ -117,7 +119,7 @@ void mainLoop()
 
         }
 
-        scheduler.core.task_time[current_idx] = scheduler.os_ticks - scheduler.core.task_entry_time;            // Store task closing time
+        scheduler.core.task_time = scheduler.os_ticks - scheduler.core.task_entry_time;                         // Store task closing time
         scheduler.core.bg_entry_time = scheduler.os_ticks;                                                      // Store background entry time
 
         // TODO: Tickle watchdog here
@@ -125,6 +127,6 @@ void mainLoop()
         while (scheduler.run_next == UNSET);                                                                    // Wait until the next task needs to run
 
         scheduler.core.bg_time = scheduler.os_ticks - scheduler.core.bg_entry_time;                             // Calculate background exit time
-        scheduler.core.cpu_use[current_idx] = (float) scheduler.core.task_time[current_idx] / (scheduler.core.task_time[current_idx] + scheduler.core.bg_time);
+        scheduler.core.cpu_use[current_idx] = (float) scheduler.core.task_time / (scheduler.core.task_time + scheduler.core.bg_time);
     }
 }

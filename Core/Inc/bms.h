@@ -8,6 +8,7 @@
 #include "afe.h"
 #include "model.h"
 #include "string.h"
+#include "temp.h"
 #include "stm32l4xx_hal.h"
 #include "stm32l4xx_hal_can.h"
 #include "stm32l4xx_hal_uart.h"
@@ -118,10 +119,7 @@ typedef struct {
     uint8_t  next_idx;              // Loop index for next function to call
     uint8_t  run_next;              // Triggers background to run the next iteration
     uint16_t fos;                   // Frequency of scheduler
-    uint16_t freq[4];               // Rate for each of the 4 tasks
     uint32_t os_ticks;              // Current tick count for timer 14
-    
-    void (*loop[4]) (void);         // Array of function pointers for the loop calls
 
     cpu_use_t core;                 // Timing information
 } scheduler_t;
@@ -142,8 +140,7 @@ typedef struct {
     uint32_t balance_flags;                 // Cell overcharge flag
     uint32_t balance_mask;                  // Cell balancing flag masks
 
-    uint16_t chan_temps_raw[TEMP_SUPPORT];  // Raw 
-    float    chan_temps_conv[TEMP_SUPPORT]; // Converted temperature values  
+    float    chan_temps[NUM_TEMP][NUM_TEMP];// Converted temperature values  
 } cells_t;
 
 typedef struct {
@@ -187,9 +184,6 @@ typedef struct {
 
 extern bms_t bms;                           // Global BMS structure
 extern scheduler_t scheduler;               // Global "schduler" structure
-
-#ifndef _SCHEDULE_H_
-#define _SCHEDULE_H_
 
 // Prototypes
 void init_RTOS_objs();                      // Initializes queues and RTOS tasks

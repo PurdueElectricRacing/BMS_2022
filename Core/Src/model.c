@@ -11,10 +11,33 @@
  * Adjust module voltages based on output current
  */
 
+// @funcname: setBalance
+//
+// @brief: Sets balance flag and updates estimated balance current
+//
+// @param: i: Cell index to modulate
+static void setBalance(uint8_t i)
+{
+    bms.cells.balance_current[i] = bms.cells.chan_volts_conv[i] / BALANCE_RES;                          // Estimate a balance current...
+    bms.cells.balance_flags |= 1U << i;                                                                 // And set balance flag
+}
+
+// @funcname: clearBalance
+//
+// @brief: Clears balance flag and updates estimated current to 0
+//
+// @param: i: Cell index to modulate
+static void clearBalance(uint8_t i)
+{
+    bms.cells.balance_current[i] = 0;                                                                   // Set estimated balance current to 0...
+    bms.cells.balance_flags &= ~(1 << i);                                                               // And reset balance flags
+}
+
 // @funcname: init_accum()
 //
 // @brief: Initializes cell accumulators by loading models and prepping
-//         initial values
+//         initial values. Also sets up free running timer for delta
+//         timings.
 void initAccum()
 {
     // Locals
@@ -33,30 +56,52 @@ void trackAccum()
 {
     // Locals
     uint8_t           i;
-    TickType_t        time_init;                                                                      // Loop time init
-    float             delta;                                                                          // Amount of time passed between iterations
-    static TickType_t time_prev;                                                                      // Previous iteration time
+    TickType_t        time_init;                                                                        // Loop time init
+    float             delta;                                                                            // Amount of time passed between iterations
+    static TickType_t time_prev;                                                                        // Previous iteration time
 
-    time_init = xTaskGetTickCount();                                                                  // Gather current tick count
-    delta = (time_init - time_prev) /  portTICK_PERIOD_MS;                                            // NOTE: THIS WON'T WORK!! RTOS TICK IS TOO SLOW
-    time_prev = time_init;                                                                            // Store last entry time
+    // TODO: Remove RTOS stuff
 
-    for (i = 0; i < bms.module_params.cells_series; ++i)                                              // Loop through each cell
+    time_init = xTaskGetTickCount();                                                                    // Gather current tick count
+    delta = (time_init - time_prev) /  portTICK_PERIOD_MS;                                              // NOTE: THIS WON'T WORK!! RTOS TICK IS TOO SLOW
+    time_prev = time_init;                                                                              // Store last entry times
+
+    for (i = 0; i < bms.module_params.cells_series; i++)                                                // Loop through each cell
     {
-        bms.cells.est_cap[i] += bms.cells.mod_volts_conv * bms.pack_curr * delta;                     // Accumulate pack current (negative means discharge)
-        bms.cells.est_cap[i] -= bms.cells.chan_volts_conv[i] * bms.cells.balance_current[i] * delta;  // Accumulate cell balance current (positive means discharge)
-        bms.cells.est_cap[i] -= MCU_V * bms.mcu_current * delta;                                      // Accumulate main rail current (positive means discharge)
-        bms.cells.est_cap[i] -= bms.cells.mod_volts_conv * bms.afe_current * delta;                   // Accumulate AFE current (positive means discharge)
-
-        // There's a better way to do this so we don't set the flags every time. We'll squeeze out performance in the future
-        if (bms.cells.est_cap[i] > BALANCE_THRESH)                                                    // Check if the cell is overcharged
+        if (bms.override.balance_force & (1U << i))                                                     // CASE 0: User requests an override
         {
-            bms.cells.balance_current[i] = bms.cells.chan_volts_conv[i] / BALANCE_RES;                // We are, so estimate a balance current...
-            bms.cells.balance_flags |= 1 << i;                                                        // And set balance flag
-        } else {
-            bms.cells.balance_current[i] = 0;                                                         // We don't need to balance, so set current to 0...
-            bms.cells.balance_flags &= ~(1 << i);                                                     // And reset balance flags
+            setBalance(i);                                                                              // Flag cell as requiring balancing
         }
-        // While the data will be 5 ms stale, chemistry is slow, so we don't care that we don't update balance current before accumulating
+        else if (bms.cells.balance_mask & (1U << i))                                                    // CASE 1: Cell is masked for some fault condition
+        {
+            clearBalance(i);                                                                            // Clear balance flag
+        }
+        else if (bms.cells.chan_volts_conv[i] > CELL_UV_THRESH)                                         // CASE 2: Cell has an overvolt condition
+        {
+            setBalance(i);                                                                              // Flag cell as requiring balancing
+        }
+        else if (bms.cells.est_SOC[i] > 100)                                                            // CASE 3: Cell has a high SOC event
+        {
+            setBalance(i);                                                                              // Flag cell as requiring balancing
+        }
+        else if ((bms.cells.est_cap[i] > bms.cells.est_cap_max) && TRACK_CAP)                           // CASE 4: Cell has an estimated capacity higher than what SOH says is possible
+        {
+            setBalance(i);                                                                              // Flag cell as requiring balancing
+        }
+        else if (bms.cells.est_SOC[i] > bms.cells.avg_SOC + SOC_THRESH)                                 // CASE 5: Cell has a much higher SOC than other cells
+        {
+            setBalance(i);                                                                              // Flag cell as requiring balancing
+        }
+        else                                                                                            // CASE 6: Cell is within limits
+        {
+            clearBalance(i);                                                                            // Clear balance flag
+        }
+
+        bms.cells.est_cap[i] += bms.cells.mod_volts_conv * bms.pack_curr * delta;                       // Accumulate pack current (negative means discharge)
+        bms.cells.est_cap[i] -= bms.cells.chan_volts_conv[i] * bms.cells.balance_current[i] * delta;    // Accumulate cell balance current (positive means discharge)
+        bms.cells.est_cap[i] -= MCU_V * bms.mcu_current * delta;                                        // Accumulate main rail current (positive means discharge)
+        bms.cells.est_cap[i] -= bms.cells.mod_volts_conv * bms.afe_current * delta;                     // Accumulate AFE current (positive means discharge)
     }
+
+    // While the data will be 5 ms stale, chemistry is slow, so we don't care that we don't update balance current before accumulating
 }

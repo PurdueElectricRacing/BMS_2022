@@ -15,7 +15,7 @@ void qConstruct(q_handle_t* q, uint8_t size)
     q->max_items = (uint8_t) (MEM_SIZE / (float) size);         // Calculate maximum number of items
 }
 
-// @funcname: qFull
+// @funcname: qIsFull
 //
 // @brief: Returns 1 if the queue is full, 0 else
 //
