@@ -4,6 +4,8 @@
 !Core/Src
 !Core/Inc/*
 !Core/Src/*
+!tests/
+!tests/*
 !*.ioc
 !README.md
 !*.xml

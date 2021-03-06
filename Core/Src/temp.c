@@ -4,8 +4,8 @@
  *  Created on: Feb 10, 2019
  *      Author: Matt Flanagan & Dawson Moore
  */
-#include "temp.h"
 
+#include "temp.h"
 
 // Globals
 uint8_t temp_array[READ_MSG_SIZE];
