@@ -12,13 +12,13 @@
 //         If this is the first boot, default paramemters will be written.
 void initEEPROM()
 {
-    bms.boot_stat.current_boot = BOOT_EEPROM_FAIL;                           // Initialize value
-    bms.boot_stat.historic_boot = BOOT_EEPROM_FAIL;                          // Initialize value
-    eepromInitialize(&hi2c1, bms.module_params.eeprom_size, EEPROM_I2C_ADDRESS);  // Attempt to initialize the EEPROM
-    eepromLinkStruct(&bms.boot_stat, sizeof(bms.boot_stat), "BTH", 1, 0);         // Attempt to link boot struct so we can see what our boot status is
-    eepromLinkStruct(&faults.stored, sizeof(faults.stored), FAULT_EEPROM_NAME, 1, 1);         // Link fault library struct in eeprom
-    eepromCleanHeaders();                                                         // Clean headers
-    eepromLoadStruct("BTH");                                                      // Load boot struct if it exists
+    bms.boot_stat.current_boot = BOOT_EEPROM_FAIL;                                      // Initialize value
+    bms.boot_stat.historic_boot = BOOT_EEPROM_FAIL;                                     // Initialize value
+    eepromInitialize(&hi2c1, bms.module_params.eeprom_size, EEPROM_I2C_ADDRESS);        // Attempt to initialize the EEPROM
+    eepromLinkStruct(&bms.boot_stat, sizeof(bms.boot_stat), "BTH", 1, 0);               // Attempt to link boot struct so we can see what our boot status is
+    eepromLinkStruct(&faults.stored, sizeof(faults.stored), FAULT_EEPROM_NAME, 1, 1);   // Link fault library struct in eeprom
+    eepromCleanHeaders();                                                               // Clean headers
+    eepromLoadStruct("BTH");                                                            // Load boot struct if it exists
 
     // TODO: faultLibInitialize();
 
