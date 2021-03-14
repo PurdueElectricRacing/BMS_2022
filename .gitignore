@@ -6,6 +6,8 @@
 !Core/Src/*
 !tests/
 !tests/*
+!Faults/
+!Faults/*
 !*.ioc
 !README.md
 !*.xml
