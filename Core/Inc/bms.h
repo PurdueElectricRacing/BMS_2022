@@ -9,6 +9,8 @@
 #include "model.h"
 #include "string.h"
 #include "temp.h"
+#include "eeprom.h"
+#include "fault_library.h"
 #include "stm32l4xx_hal.h"
 #include "stm32l4xx_hal_can.h"
 #include "stm32l4xx_hal_uart.h"

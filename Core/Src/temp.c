@@ -100,6 +100,7 @@ void initLTC()
         {
             // TODO: Use fault library for this
             //bms.temp_con = FAULTED;                                                                         	// Set temperature connection status to fault
+			signalFault(TEMP_CONNECTION_FAULT_NUM);
         }
         HAL_Delay(WRITE_REQ_WAIT);                                                                          	// Wait the required time period
     }
@@ -164,4 +165,12 @@ void acquireTemp()
 			}
 		}
 	}
+}
+
+// @funcname: tempConnectionFaultSet
+//
+// @brief: Handles a temp connection fault
+void tempConnectionFaultSet()
+{
+	// TODO: Handle temp connection fault (set)
 }
