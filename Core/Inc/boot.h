@@ -5,7 +5,7 @@
 #include "bms.h"
 
 // Generic Defines
-#define START_ADDRESS   0x500;          // Starting address for EEPROM memory
+#define EEPROM_I2C_ADDRESS   0x50;          // I2C Address of EEPROM
 
 // Prototypes
 

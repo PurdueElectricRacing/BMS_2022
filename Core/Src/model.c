@@ -79,10 +79,12 @@ void trackAccum()
         else if (bms.cells.chan_volts_conv[i] > CELL_UV_THRESH)                                         // CASE 2: Cell has an overvolt condition
         {
             setBalance(i);                                                                              // Flag cell as requiring balancing
+            signalFault(OVERVOLTAGE_FAULT_NUM);
         }
         else if (bms.cells.est_SOC[i] > 100)                                                            // CASE 3: Cell has a high SOC event
         {
             setBalance(i);                                                                              // Flag cell as requiring balancing
+            signalFault(OVER_SOC_FAULT_NUM);
         }
         else if ((bms.cells.est_cap[i] > bms.cells.est_cap_max) && TRACK_CAP)                           // CASE 4: Cell has an estimated capacity higher than what SOH says is possible
         {
@@ -91,6 +93,7 @@ void trackAccum()
         else if (bms.cells.est_SOC[i] > bms.cells.avg_SOC + SOC_THRESH)                                 // CASE 5: Cell has a much higher SOC than other cells
         {
             setBalance(i);                                                                              // Flag cell as requiring balancing
+            signalFault(OVER_SOC_FAULT_NUM); // TODO: same fault as high SOC event?
         }
         else                                                                                            // CASE 6: Cell is within limits
         {
@@ -104,4 +107,20 @@ void trackAccum()
     }
 
     // While the data will be 5 ms stale, chemistry is slow, so we don't care that we don't update balance current before accumulating
+}
+
+// @funcname: overvoltageFaultSet
+//
+// @brief: Handles an overvoltage fault
+void overvoltageFaultSet()
+{
+    // TODO: overvoltage fault set
+}
+
+// @funcname: overSOCFaultSet
+//
+// @brief: Handles an over SOC fault
+void overSOCFaultSet()
+{
+    // TODO: over SOC fault set
 }
