@@ -30,10 +30,10 @@ void initEEPROM()
 //         If the boot is invalid, send critical error, else continue with loading.
 //
 // @return: SUCCESS if valid, FAILURE else
-status_t validateBoot()
+success_t validateBoot()
 {
     // Local variables
-    status_t ret = FAILURE;                                             // Initialize to failure state
+    success_t ret = FAILURE_G;                                          // Initialize to failure state
     CanTxMsgTypeDef tx;                                                 // CAN TX frame
 
     // Check to see if we successfully overwrote the default values during EEPROM load
@@ -41,12 +41,14 @@ status_t validateBoot()
     {
         bms.boot_stat.current_boot = BOOT_HARD;                         // Save as first time boot
         bms.boot_stat.historic_boot = BOOT_HARD;                        // Save as first time boot
-        eepromSaveStruct("BTH");                                             // Write current boot values
+        eepromSaveStruct("BTH");                                        // Write current boot values
 
-        ret = SUCCESS;                                                  // Successful first run
+        ret = SUCCESS_G;                                                // Successful first run
     }
     else if (bms.boot_stat.historic_boot == BOOT_WDAWG)                 // Check if powering on from watchdog reset
     {
         
     }
+
+    return ret;
 }

@@ -15,9 +15,10 @@
 #endif
 
 // Enumerations
+// Comment out if declared elsewhere
 typedef enum {
-    FAILURE,
-    SUCCESS
+    FAILURE_G,
+    SUCCESS_G
 } success_t;
 
 // Structs

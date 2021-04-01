@@ -9,10 +9,7 @@
 #define EEPROM_H_
 
 #include "main.h"
-
-//I was told this was required:
-#define PER 1
-#define GREAT PER
+#include "bms.h"
 
 //#define DEVICE_ADDR 0x50 //Before Bit Shifting
 

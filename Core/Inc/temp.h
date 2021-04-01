@@ -78,6 +78,9 @@ typedef enum {
     TEMP_READ
 } temp_state_t;
 
+// Externs
+extern I2C_HandleTypeDef hi2c1;
+
 // Prototypes
 void acquireTemp();
 void initLTC();

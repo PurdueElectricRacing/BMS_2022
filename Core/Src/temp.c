@@ -113,58 +113,61 @@ void initLTC()
 // @exec_period: 1000Hz or every 1 ms
 void acquireTemp()
 {
-	// Locals
-	uint16_t	   		tempreature;																			// Temperature read from ADC
-	temp_state_t   		next_state;																				// Next state for FSM
-	static uint8_t 		ic;																						// Current ic being read
-	static uint8_t 		channel;																				// Current channel being read
-	static uint8_t		wait;																					// Current wait time
-	static temp_state_t state;																					// Current FSM state
+    // Locals
+    temp_state_t        next_state;                                                                             // Next state for FSM
+    static uint8_t      ic;                                                                                     // Current ic being read
+    static uint8_t      chan;                                                                                   // Current channel being read
+    static uint8_t      wait;                                                                                   // Current wait time
+    static temp_state_t state;                                                                                  // Current FSM state
 
-	/*
-		The FSM is being used to hide a delay statement. If we don't do this, we need to ensure that a wait of
-		~200 ms is taken between triggering a conversion and reading the value on the ADC. In this setup, without
-		and RTOS, we can just skip 200 cycles of the FSM running at ~1ms per cycle to make up for this removed wait
-		without the need to block.
+    /*
+        The FSM is being used to hide a delay statement. If we don't do this, we need to ensure that a wait of
+        ~200 ms is taken between triggering a conversion and reading the value on the ADC. In this setup, without
+        and RTOS, we can just skip 200 cycles of the FSM running at ~1ms per cycle to make up for this removed wait
+        without the need to block.
+        TL;DR: Be wary of editing the setup. I'm looking at you, future Dawson...
+    */
 
-		TL;DR: Be wary of editing the setup. I'm looking at you, future Dawson...
-	*/
+    next_state = state;                                                                                         // Default to same state
 
-	next_state = state;																							// Default to same state
+    switch (state)                                                                                              // Check current state
+    {
+        case CHANNEL_UPDATE:                                                                                    // Update channel
+        {
+            chan = chan == NUM_CHANNELS ? 0 : chan;                                                             // Set channel back to 0 if number if channels is exceeded
+            write_data[1] = channel_combine(channel[chan++]);                                                   // Set channel byte
+            HAL_I2C_Master_Transmit(&hi2c1, (uint16_t) write_data[0], &write_data[1], WRITE_MSG_SIZE, 0xFFFF);  // Send with max timeout
+            while (hi2c1.State != HAL_I2C_STATE_READY);                                                         // Wait for send to stop
+            next_state = WAIT;                                                                                  // Move to wait state
 
-	switch (state)																								// Check current state
-	{
-		case CHANNEL_UPDATE:																					// Update channel
-		{
-			channel = channel == NUM_CHANNELS ? 0 : channel;													// Set channel back to 0 if number if channels is exceeded
-			write_data[1] = channel_combine(channel[i++]);														// Set channel byte
-			HAL_I2C_Master_Transmit(&hi2c1, (uint16_t) write_data[0], &write_data[1], WRITE_MSG_SIZE, 0xFFFF);	// Send with max timeout
-			while (hi2c1.State != HAL_I2C_STATE_READY);															// Wait for send to stop
-			next_state = WAIT;																					// Move to wait state
+            break;                                                                                              // Don't continue execution until next pass through
+        }
 
-			break;																								// Don't continue execution until next pass through
-		}
+        case WAIT:
+        {
+            if (wait++ == 199)                                                                                  // Increment wait and check if we've hit time
+            {
+                wait = 0;                                                                                       // We've hit the wait time, so reset counter
+                next_state = TEMP_READ;                                                                         // Move to read state
+            }
 
-		case WAIT:
-		{
-			if (wait++ == 199)																					// Increment wait and check if we've hit time
-			{
-				wait = 0;																						// We've hit the wait time, so reset counter
-				next_state = TEMP_READ;																			// Move to read state
-			}
-		}
+            break;
+        }
 
-		case TEMP_READ:
-		{
-			bms.temp.data[ic++][channel - 1] = readLTCValue(channel - 1, ic);									// Read temperature value from ADC
-			ic = ic == NUM_TEMP ? 0 : ic;																		// Set ic back to 0 if number of ICs is exceeded
+        case TEMP_READ:
+        {
+            bms.cells.chan_temps[ic][chan - 1] = readLTCValue(chan - 1, ic);                                    // Store temperature value
+            ++ic;                                                                                               // Increment ic
+            ic = ic == NUM_TEMP ? 0 : ic;                                                                       // Set ic back to 0 if number of ICs is exceeded
 
-			if (ic == 0)																						// Check if we just wrapped the ic variable
-			{
-				next_state = CHANNEL_UPDATE;																	// We did, so advance to next channel
-			}
-		}
-	}
+            if (ic == 0)                                                                                        // Check if we just wrapped the ic variable
+            {
+                next_state = CHANNEL_UPDATE;                                                                    // We did, so advance to next channel
+            }
+        }
+    }
+
+    state = next_state;
 }
 
 // @funcname: tempConnectionFaultSet

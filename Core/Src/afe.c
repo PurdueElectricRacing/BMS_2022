@@ -6,6 +6,8 @@
 
 #include "afe.h"
 
+extern void change_baud(uint32_t freq, uint32_t os);
+
 // @funcname: crc_16_ibm()
 //
 // @brief: Calculates the CRC for the AFE. This function is taken from page 55 of
@@ -15,7 +17,7 @@
 // @param: len: Length of the data
 //
 // @return: 16 bit CRC value
-static crc_16_ibm(uint8_t* data, uint16_t len)
+static uint16_t crc_16_ibm(uint8_t* data, uint16_t len)
 {
     // Locals
     uint16_t crc = 0;                                                               // Calculated CRC value
@@ -39,7 +41,7 @@ static crc_16_ibm(uint8_t* data, uint16_t len)
 //
 // @param: data: Data going to AFE
 // @param: len: Length of the data
-static uint8_t tx(uint8_t* data, uint8_t len)
+static void tx(uint8_t* data, uint8_t len)
 {
     // Locals
     uart_tx_t tx;                                                                   // UART TX struct
@@ -48,17 +50,8 @@ static uint8_t tx(uint8_t* data, uint8_t len)
     memcpy(&tx.tx_buffer[0], data, len);                                            // Copy data to struct
 
     // TODO: Add a timeout for sending values and change return type to a success enumeration
-    // TODO: Change to actually send packet right here
 
-    while (uxQueueMessagesWaiting(bms.q_tx_uart) == UART_TX_Q_SIZE)                 // Check that there's space in the queue
-    {
-        vTaskDelay(WAIT_QUEUE_FULL);                                                // Wait until there's space
-    }
-
-    if (xQueueSendToBack(bms.q_tx_uart, &tx, TIMEOUT) != pdTRUE)
-    {
-        // Throw fault
-    }
+    HAL_UART_Transmit_IT(&huart1, tx.tx_buffer, tx.tx_size);
 }
 
 // @funcname: calcBalance
@@ -79,14 +72,15 @@ void calcBalance()
         {
             bms.cells.balance_flags |= 1U << i;                                 // Flag cell as requiring balancing
         }
-        else if ((bms.cells.est_cap[i] > bms.cells.est_cap_max) && TRACK_CAP)   // CASE 3: Cell has an estimated capacity higher than what SOH says is possible
-        {
-            bms.cells.balance_flags |= 1U << i;                                 // Flag cell as requiring balancing
-        }
-        else if (bms.cells.est_SOC[i] > bms.cells.avg_SOC + SOC_THRESH)         // CASE 4: Cell has a much higher SOC than other cells
-        {
-            bms.cells.balance_flags |= 1U << i;                                 // Flag cell as requiring balancing
-        }
+        // TODO: Implement SOC model
+//        else if ((bms.cells.est_cap[i] > bms.cells.est_cap_max) && TRACK_CAP)   // CASE 3: Cell has an estimated capacity higher than what SOH says is possible
+//        {
+//            bms.cells.balance_flags |= 1U << i;                                 // Flag cell as requiring balancing
+//        }
+//        else if (bms.cells.est_SOC[i] > bms.cells.avg_SOC + SOC_THRESH)         // CASE 4: Cell has a much higher SOC than other cells
+//        {
+//            bms.cells.balance_flags |= 1U << i;                                 // Flag cell as requiring balancing
+//        }
         else                                                                    // CASE 5: Cell is within limits
         {
             bms.cells.balance_flags &= ~(1U << i);                              // Clear balance flag
@@ -136,7 +130,7 @@ void initAfe()
         cmd[1] = COMCONFIG;
         cmd[2] = 0b11111000;
         cmd[3] = 0b00110000;
-        crc = crtc_16_ibm(cmd, 4);
+        crc = crc_16_ibm(cmd, 4);
         cmd[4] = crc >> 8;
         cmd[5] = (uint8_t) crc;
         tx(cmd, 6);
@@ -149,7 +143,7 @@ void initAfe()
     cmd[0] = RESET | (CMD_FRAME << 7) | (WRITE_BRD_WOR << 4) | (BIT_8 << 3) | BYTE_1;
     cmd[1] = TXHOLDOFF;
     cmd[2] = 5;
-    crc = crtc_16_ibm(cmd, 3);
+    crc = crc_16_ibm(cmd, 3);
     cmd[3] = crc >> 8;
     cmd[4] = (uint8_t) crc;
     tx(cmd, 5);
@@ -157,7 +151,7 @@ void initAfe()
     // Set channel count
     cmd[1] = NCHAN;
     cmd[2] = bms.module_params.cells_series;                                        // NOTE: This line will need to be changed if we use two AFEs
-    crc = crtc_16_ibm(cmd, 3);
+    crc = crc_16_ibm(cmd, 3);
     cmd[3] = crc >> 8;
     cmd[4] = (uint8_t) crc;
     tx(cmd, 5);
@@ -165,7 +159,7 @@ void initAfe()
     // Set device configuration (regulator on, addr auto, OV/UV on, comp hyst on, fault latch off)
     cmd[1] = DEVCONFIG;
     cmd[2] = 0b00010011;
-    crc = crtc_16_ibm(cmd, 3);
+    crc = crc_16_ibm(cmd, 3);
     cmd[3] = crc >> 8;
     cmd[4] = (uint8_t) crc;
     tx(cmd, 5);
@@ -173,7 +167,7 @@ void initAfe()
     // Set power configuration as per datasheet
     cmd[1] = PWRCONFIG;
     cmd[2] = 0b10000000;
-    crc = crtc_16_ibm(cmd, 3);
+    crc = crc_16_ibm(cmd, 3);
     cmd[3] = crc >> 8;
     cmd[4] = (uint8_t) crc;
     tx(cmd, 5);
@@ -181,7 +175,7 @@ void initAfe()
     // Set balance configuration (will not allow balance with a fault, with auto stop after 1 minute)
     cmd[1] = CBCONFIG;
     cmd[2] = 0b00100000;
-    crc = crtc_16_ibm(cmd, 3);
+    crc = crc_16_ibm(cmd, 3);
     cmd[3] = crc >> 8;
     cmd[4] = (uint8_t) crc;
     tx(cmd, 5);
@@ -191,7 +185,7 @@ void initAfe()
     cmd[1] = TSTCONFIG;
     cmd[2] = 0b00000101;
     cmd[3] = 0b00000000;
-    crc = crtc_16_ibm(cmd, 4);
+    crc = crc_16_ibm(cmd, 4);
     cmd[4] = crc >> 8;
     cmd[5] = (uint8_t) crc;
     tx(cmd, 6);
@@ -200,7 +194,7 @@ void initAfe()
     cmd[0] = RESET | (CMD_FRAME << 7) | (WRITE_BRD_WOR << 4) | (BIT_8 << 3) | BYTE_1;
     cmd[1] = CTO;
     cmd[2] = 0b01001001;
-    crc = crtc_16_ibm(cmd, 3);
+    crc = crc_16_ibm(cmd, 3);
     cmd[3] = crc >> 8;
     cmd[4] = (uint8_t) crc;
     tx(cmd, 5);
@@ -208,7 +202,7 @@ void initAfe()
     // Set auto monitor period (200 ms)
     cmd[1] = AM_PER;
     cmd[2] = 0b00000111;
-    crc = crtc_16_ibm(cmd, 3);
+    crc = crc_16_ibm(cmd, 3);
     cmd[3] = crc >> 8;
     cmd[4] = (uint8_t) crc;
     tx(cmd, 5);
@@ -221,7 +215,7 @@ void initAfe()
     cmd[3] = 0b11111111;
     cmd[4] = 0b00000000;
     cmd[5] = 0b00000000;
-    crc = crtc_16_ibm(cmd, 6);
+    crc = crc_16_ibm(cmd, 6);
     cmd[6] = crc >> 8;
     cmd[7] = (uint8_t) crc;
     tx(cmd, 8);
@@ -230,7 +224,7 @@ void initAfe()
     cmd[0] = RESET | (CMD_FRAME << 7) | (WRITE_BRD_WOR << 4) | (BIT_8 << 3) | BYTE_1;
     cmd[1] = AM_OSMPL;
     cmd[2] = 0b01111010;
-    crc = crtc_16_ibm(cmd, 3);
+    crc = crc_16_ibm(cmd, 3);
     cmd[3] = crc >> 8;
     cmd[4] = (uint8_t) crc;
     tx(cmd, 5);
@@ -239,7 +233,7 @@ void initAfe()
     cmd[0] = RESET | (CMD_FRAME << 7) | (WRITE_BRD_WOR << 4) | (BIT_8 << 3) | BYTE_1;
     cmd[1] = SMPL_DLY1;
     cmd[2] = 0b00000000;
-    crc = crtc_16_ibm(cmd, 3);
+    crc = crc_16_ibm(cmd, 3);
     cmd[3] = crc >> 8;
     cmd[4] = (uint8_t) crc;
     tx(cmd, 5);
@@ -249,7 +243,7 @@ void initAfe()
     cmd[1] = COMP_UV;
     thresh = CELL_UV_THRESH * THRESH_CONV;
     cmd[2] = ((uint8_t) thresh) << 1;
-    crc = crtc_16_ibm(cmd, 3);
+    crc = crc_16_ibm(cmd, 3);
     cmd[3] = crc >> 8;
     cmd[4] = (uint8_t) crc;
     tx(cmd, 5);
@@ -259,7 +253,7 @@ void initAfe()
     cmd[1] = COMP_OV;
     thresh = CELL_OV_THRESH * THRESH_CONV;
     cmd[2] = ((uint8_t) thresh) << 1;
-    crc = crtc_16_ibm(cmd, 3);
+    crc = crc_16_ibm(cmd, 3);
     cmd[3] = crc >> 8;
     cmd[4] = (uint8_t) crc;
     tx(cmd, 5);
@@ -269,8 +263,9 @@ void initAfe()
     cmd[1] = CELL_UV;
     thresh = CELL_OV_THRESH * THRESH_CONV;
     cmd[2] = ((uint8_t) thresh) << 1;
-    cmd[3] = ;
-    crc = crtc_16_ibm(cmd, 4);
+    // TODO: Set these to what battery wants
+    cmd[3] = 0x00;
+    crc = crc_16_ibm(cmd, 4);
     cmd[4] = crc >> 8;
     cmd[5] = (uint8_t) crc;
     tx(cmd, 6);
@@ -280,8 +275,9 @@ void initAfe()
     cmd[1] = CELL_OV;
     thresh = CELL_OV_THRESH * THRESH_CONV;
     cmd[2] = ((uint8_t) thresh) << 1;
-    cmd[3] = ;
-    crc = crtc_16_ibm(cmd, 4);
+    // TODO: Set these to what battery wants
+    cmd[3] = 0x00;
+    crc = crc_16_ibm(cmd, 4);
     cmd[4] = crc >> 8;
     cmd[5] = (uint8_t) crc;
     tx(cmd, 6);

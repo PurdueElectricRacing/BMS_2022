@@ -1,7 +1,6 @@
 #include "fault_library.h"
 
-
-TaskHandle_t Faul_Task_Handle;
+//TaskHandle_t Faul_Task_Handle;
 uint8_t task_active = 0;
 
 void faultTask();
@@ -13,10 +12,11 @@ void setCriticality(uint8_t loc, uint8_t val);
 // GENERATED VALUES --------
 const uint16_t rise_init[FAULT_MAX] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 const uint16_t fall_init[FAULT_MAX] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+// TODO: Move to header and use hex
 #define HISTORIC_INIT 0b00000000000000000000000000000000
 #define ENABLE_INIT 0b00000000000000000000111111111111
 #define CRITICALITY_INIT 0b0000000000000000000000000000000000000000101010101010101010101010
-const void (*set_handler_init[FAULT_MAX])() = {overvoltageFaultSet, NULL, overSOCFaultSet, NULL, NULL, NULL, NULL, NULL, tempConnectionFaultSet, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
+const void (*set_handler_init[FAULT_MAX])() = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
 const void (*cont_handler_init[FAULT_MAX])() = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
 const void (*off_handler_init[FAULT_MAX])() = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
 // END GENERATED VALUES -------
@@ -47,7 +47,7 @@ void faultLibInitialize()
 
   // TODO: get rid of RTOS task functions
   task_active = 1;
-  xTaskCreate(faultTask, "Faults", 256, NULL, 1, &Faul_Task_Handle);
+  // TODO: Schedule with scheduler
 }
 
 //main loop
@@ -55,7 +55,7 @@ void faultTask()
 {
   while (task_active)
   {
-    TickType_t current_tick_time = xTaskGetTickCount();
+    uint32_t current_tick_time = TIM2->CNT;
 
     for (int i = 0; i < FAULT_MAX; i++)
     {
@@ -135,11 +135,7 @@ void faultTask()
 
     //read signals, reset for next cycle
     faults.stored.signal = 0;
-
-    vTaskDelayUntil(&current_tick_time, pdMS_TO_TICKS(PERIOD_FAULT_TASK));
   }
-
-  vTaskDelete(NULL);
 }
 
 void faultLibShutdown()

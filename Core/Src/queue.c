@@ -39,7 +39,7 @@ success_t qSendToBack(q_handle_t* q, const void* item)
 {
     if (q->item_count == q->max_items)                          // Ensure that we have a location for the item
     {
-        return FAILURE;                                         // We don't, so let the user know it failed
+        return FAILURE_G;                                       // We don't, so let the user know it failed
     }
 
     if ((q->current - q->buffer) == q->size * q->max_items)     // Check if the current pointer location is at the end of the buffer
@@ -51,7 +51,7 @@ success_t qSendToBack(q_handle_t* q, const void* item)
     q->current = q->current + q->size;                          // Increment pointer by number of bytes corresponding to item size
     ++q->item_count;                                            // Increment number of items in queue
 
-    return SUCCESS;
+    return SUCCESS_G;
 }
 
 // @funcname: qReceive
@@ -66,7 +66,7 @@ success_t qReceive(q_handle_t* q, void* rx_buf)
 {
     if (q->item_count == 0)                                     // Ensure that we actually have an item in the queue
     {
-        return FAILURE;                                         // We don't, so let the user know it failed
+        return FAILURE_G;                                       // We don't, so let the user know it failed
     }
 
     if ((q->start - q->buffer) == q->size * q->max_items)       // Check if the start pointer location is at the end of the buffer
@@ -78,5 +78,5 @@ success_t qReceive(q_handle_t* q, void* rx_buf)
     q->start = q->start + q->size;                              // Increment pointer by number of bytes corresponding to item size
     --q->item_count;                                            // Decrement number of items in queue
 
-    return SUCCESS;
+    return SUCCESS_G;
 }

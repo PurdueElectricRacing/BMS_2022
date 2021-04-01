@@ -58,6 +58,26 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define PERSONALITY_Pin GPIO_PIN_0
+#define PERSONALITY_GPIO_Port GPIOA
+#define BOARD_MODE_Pin GPIO_PIN_1
+#define BOARD_MODE_GPIO_Port GPIOA
+#define I_M_OUT_Pin GPIO_PIN_4
+#define I_M_OUT_GPIO_Port GPIOA
+#define I_SENSE1_Pin GPIO_PIN_5
+#define I_SENSE1_GPIO_Port GPIOA
+#define I_SENSE2_Pin GPIO_PIN_6
+#define I_SENSE2_GPIO_Port GPIOA
+#define CONN_LED_Pin GPIO_PIN_0
+#define CONN_LED_GPIO_Port GPIOB
+#define HEARTBEAT_Pin GPIO_PIN_1
+#define HEARTBEAT_GPIO_Port GPIOB
+#define WC_Pin GPIO_PIN_8
+#define WC_GPIO_Port GPIOA
+#define ERR_LED_Pin GPIO_PIN_15
+#define ERR_LED_GPIO_Port GPIOA
+#define SDC_Pin GPIO_PIN_3
+#define SDC_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */

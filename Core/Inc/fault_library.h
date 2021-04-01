@@ -11,14 +11,10 @@
 #include <string.h>
 #include "main.h"
 #include "stm32l4xx_hal.h"
-#include "cmsis_os.h"
 #include "eeprom.h"
 
 // Be sure to include headers with locations to functions!
 #include "bms.h"
-
-#define PER 1
-#define GREAT PER
 
 #define PERIOD_FAULT_TASK 50 //ms
 

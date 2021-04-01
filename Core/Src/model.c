@@ -56,14 +56,14 @@ void trackAccum()
 {
     // Locals
     uint8_t           i;
-    TickType_t        time_init;                                                                        // Loop time init
+    uint32_t          time_init;                                                                        // Loop time init
     float             delta;                                                                            // Amount of time passed between iterations
-    static TickType_t time_prev;                                                                        // Previous iteration time
+    static uint32_t   time_prev;                                                                        // Previous iteration time
 
     // TODO: Remove RTOS stuff
 
-    time_init = xTaskGetTickCount();                                                                    // Gather current tick count
-    delta = (time_init - time_prev) /  portTICK_PERIOD_MS;                                              // NOTE: THIS WON'T WORK!! RTOS TICK IS TOO SLOW
+    time_init = TIM2->CNT;                                                                              // Gather current tick count
+    delta = (time_init - time_prev) /  1000;                                                            // Calculate seconds since last run
     time_prev = time_init;                                                                              // Store last entry times
 
     for (i = 0; i < bms.module_params.cells_series; i++)                                                // Loop through each cell
@@ -86,21 +86,22 @@ void trackAccum()
             setBalance(i);                                                                              // Flag cell as requiring balancing
             signalFault(OVER_SOC_FAULT_NUM);
         }
-        else if ((bms.cells.est_cap[i] > bms.cells.est_cap_max) && TRACK_CAP)                           // CASE 4: Cell has an estimated capacity higher than what SOH says is possible
-        {
-            setBalance(i);                                                                              // Flag cell as requiring balancing
-        }
-        else if (bms.cells.est_SOC[i] > bms.cells.avg_SOC + SOC_THRESH)                                 // CASE 5: Cell has a much higher SOC than other cells
-        {
-            setBalance(i);                                                                              // Flag cell as requiring balancing
-            signalFault(OVER_SOC_FAULT_NUM); // TODO: same fault as high SOC event?
-        }
+        // TODO: Implement model
+//        else if ((bms.cells.est_cap[i] > bms.cells.est_cap_max) && TRACK_CAP)                           // CASE 4: Cell has an estimated capacity higher than what SOH says is possible
+//        {
+//            setBalance(i);                                                                              // Flag cell as requiring balancing
+//        }
+//        else if (bms.cells.est_SOC[i] > bms.cells.avg_SOC + SOC_THRESH)                                 // CASE 5: Cell has a much higher SOC than other cells
+//        {
+//            setBalance(i);                                                                              // Flag cell as requiring balancing
+//            signalFault(OVER_SOC_FAULT_NUM); // TODO: same fault as high SOC event?
+//        }
         else                                                                                            // CASE 6: Cell is within limits
         {
             clearBalance(i);                                                                            // Clear balance flag
         }
 
-        bms.cells.est_cap[i] += bms.cells.mod_volts_conv * bms.pack_curr * delta;                       // Accumulate pack current (negative means discharge)
+        bms.cells.est_cap[i] += bms.cells.mod_volts_conv * bms.cells.pack_current * delta;              // Accumulate pack current (negative means discharge)
         bms.cells.est_cap[i] -= bms.cells.chan_volts_conv[i] * bms.cells.balance_current[i] * delta;    // Accumulate cell balance current (positive means discharge)
         bms.cells.est_cap[i] -= MCU_V * bms.mcu_current * delta;                                        // Accumulate main rail current (positive means discharge)
         bms.cells.est_cap[i] -= bms.cells.mod_volts_conv * bms.afe_current * delta;                     // Accumulate AFE current (positive means discharge)

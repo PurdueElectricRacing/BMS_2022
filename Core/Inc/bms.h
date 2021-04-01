@@ -3,13 +3,13 @@
 
 // Includes
 #include "main.h"
-#include "cmsis_os.h"
 #include "can.h"
 #include "afe.h"
 #include "model.h"
 #include "string.h"
 #include "temp.h"
 #include "eeprom.h"
+#include "queue.h"
 #include "fault_library.h"
 #include "stm32l4xx_hal.h"
 #include "stm32l4xx_hal_can.h"
@@ -30,17 +30,14 @@
 #define UART_TX_Q_SIZE  5                   // UART queue size
 #define CELL_UV_THRESH  3.0f                // Cell undervoltage threshold
 #define CELL_OV_THRESH  4.3f                // Cell overvoltage threshold
+#define NUM_TEMP        2                   // Number of thermistor ADCs
+#define NUM_CHANNELS    16                  // Number of channels per thermistor ADC
 
 // Enumerations
-enum {
-    UNSET,                                  // Unset = 0
-    SET                                     // Set = 1
-};
-
-typedef enum {
-    FAILURE,                                // Failure = 0
-    SUCCESS                                 // Success = 1
-} status_t;
+//typedef enum {
+//    FAILURE_G,                              // Failure = 0
+//    SUCCESS_G                               // Success = 1
+//} status_t;
 
 typedef enum {
     FULL,                                   // BMS has full control
@@ -142,7 +139,7 @@ typedef struct {
     uint32_t balance_flags;                 // Cell overcharge flag
     uint32_t balance_mask;                  // Cell balancing flag masks
 
-    float    chan_temps[NUM_TEMP][NUM_TEMP];// Converted temperature values  
+    uint16_t chan_temps[NUM_TEMP][NUM_CHANNELS]; // Converted temperature values
 } cells_t;
 
 typedef struct {
@@ -166,15 +163,13 @@ typedef struct {
     CAN_HandleTypeDef*  can;                // CAN Handle
     UART_HandleTypeDef* uart;               // UART Handle
 
-    QueueHandle_t       q_rx_can;           // CAN RX queue
-    QueueHandle_t       q_tx_can;           // CAN TX queue
-    QueueHandle_t       q_uart_tx;          // UART TX queue
+    q_handle_t          q_rx_can;           // CAN RX queue
+    q_handle_t          q_tx_can;           // CAN TX queue
 
     afe_t               afe;                // AFE voltage readings and parameters
 
     params_t            module_params;      // Module parameters
     boot_historic_t     boot_stat;          // Module boot type
-    faults_t            faults;             // Module faults
     cells_t             cells;              // Module cell data
     manual_override_t   override;           // User configurable overrides
 
@@ -185,7 +180,7 @@ typedef struct {
 } bms_t;
 
 extern bms_t bms;                           // Global BMS structure
-extern scheduler_t scheduler;               // Global "schduler" structure
+extern scheduler_t scheduler;               // Global "scheduler" structure
 
 // Prototypes
 void init_RTOS_objs();                      // Initializes queues and RTOS tasks
@@ -194,7 +189,7 @@ void task_1ms_loop();                       // 1 ms loop
 void task_5ms_loop();                       // 5 ms loop
 void task_100ms_loop();                     // 100 ms loop
 void task_bg();                             // Background loop
-void initScheduler(uint16_t f1);            // Initializes frequency of scheduler
+void initScheduler();                       // Initializes scheduler
 void startTasks();                          // Sets timer 14 to run and start loop
 void pauseTasks();                          // Stops timer 14 to pause looop
 

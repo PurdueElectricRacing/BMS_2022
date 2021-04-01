@@ -21,12 +21,13 @@ void initBms()
     init_accum();
     init_afe();
     initLTC();
+    SUCCESS;
 }
 
-void initScheduler(uint16_t f1)
+void initScheduler()
 {
     /*
-        Note: This system uses timer 14
+        Note: This system uses timer 2
         If you want/need to use this timer, it is on you to edit the configuration
         to use a different timer.
         DO NOT ATTEMPT TO CONFIGURE THIS TIMER IN CUBE!
@@ -43,14 +44,13 @@ void initScheduler(uint16_t f1)
         Frequencies are given in OS ticks.
     */
 
-    // Copy over frequency info
-    scheduler.freq = f1;
-
-    // Configure timer 14
-    RCAlC->AHBENR |= RCC_APB1ENR_TIM14EN;               // Enable timer clock in RCC
-	TIM14->PSC = 48000 - 1;                             // TODO: Use sysclk values to actually set this to some real value
-	TIM14->ARR = 2 - 1;                                 // TODO: Fix ARR
-	TIM14->DIER |= TIM_DIER_UIE;
+    // Configure timer 2
+    // Targeting an interrupt every 1 ms
+    RCC->APB1ENR1 |= RCC_APB1ENR1_TIM2EN;                           // Enable timer clock in RCC
+    TIM2->PSC = 3200 - 1;                                           // Set prescalar (clock at 10000 Hz)
+    TIM2->ARR = 10;                                                 // Set auto reload value
+    TIM2->CR1 &= ~(TIM_CR1_DIR);                                    // Set to count down
+    TIM2->DIER |= TIM_DIER_UIE;                                     // Enable update interrupt
 
     // Default timing values
     memset(&scheduler.core.task_time, 0, sizeof(scheduler.core.task_time));
@@ -60,45 +60,36 @@ void initScheduler(uint16_t f1)
     IWDG->KR |= 0xCCCC;                                 // Enable watchdog
     IWDG->KR |= 0x5555;                                 // Enable register access
     IWDG->PR =  0;                                      // Set the prescalar value
+
+    // TODO: Finish watchdog init and test
 }
 
 void startTasks()
 {
-    TIM14->CR1 |= TIM_CR1_CEN;                          // Enable the timer
-    NVIC->ISER[0] |= 1 << 19;                           // Unmask timer interrupts
+    TIM2->CR1 |= TIM_CR1_CEN;                           // Enable the timer
+    NVIC->ISER[0] |= 1 << TIM2_IRQn;                    // Unmask timer interrupts
 }
 
 void pauseTasks()
 {
-    TIM14->CR1 &= ~TIM_CR1_CEN;                         // Disable the timer
-    NVIC->ISER[0] &= ~(1 << 19);                        // Mask timer interrupts (just in case)
+    TIM2->CR1 &= ~TIM_CR1_CEN;                          // Disable the timer
+    NVIC->ISER[0] &= ~(1 << TIM2_IRQn);                 // Mask timer interrupts (just in case)
 }
 
 void TIM14_IRQHandler()
 {
-    // Locals
-    uint8_t i;                                          // Generic count variable
-
-	TIM14->SR &= ~TIM_SR_UIF;                           // Acknowledge the interrupt
+	TIM2->SR &= ~TIM_SR_UIF;                            // Acknowledge the interrupt
     ++scheduler.os_ticks;                               // Increase tick count
 
-    if (scheduler.os_ticks % 10 == 0)                   // Check if we're ready to run the next cycle
-    {
-        scheduler.run_next == SET;                      // Let the main loop know it should run
-    }
+    scheduler.run_next = 1;                             // Let the main loop know it should run
 }
 
 void mainLoop()
 {
-    // Locals
-    uint8_t current_idx;
-
     while (PER == GREAT)
     {
-        current_idx = scheduler.next_idx;                                                                       // Capture idx in the event it's updated during task run
-
         scheduler.core.task_entry_time = scheduler.os_ticks;                                                    // Update task entry time
-        scheduler.run_next = UNSET;                                                                             // Update run flag to let scheduler know we're working on next task
+        scheduler.run_next = 0;                                                                                 // Update run flag to let scheduler know we're working on next task
 
         // TODO: Call functions
         // 1 ms functions
@@ -124,9 +115,9 @@ void mainLoop()
 
         // TODO: Tickle watchdog here
 
-        while (scheduler.run_next == UNSET);                                                                    // Wait until the next task needs to run
+        while (scheduler.run_next == 0);                                                                        // Wait until the next task needs to run
 
         scheduler.core.bg_time = scheduler.os_ticks - scheduler.core.bg_entry_time;                             // Calculate background exit time
-        scheduler.core.cpu_use[current_idx] = (float) scheduler.core.task_time / (scheduler.core.task_time + scheduler.core.bg_time);
+        scheduler.core.cpu_use = (float) scheduler.core.task_time / (scheduler.core.task_time + scheduler.core.bg_time);
     }
 }
