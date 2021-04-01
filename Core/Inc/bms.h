@@ -25,13 +25,14 @@
 #define BALANCE_THRESH  XXXX                // Cell capacity limit
 #define BALANCE_RES     25                  // Balance resistor value in ohms
 #define FCLK            80                  // Fclk freuqency in MHz
-#define RX_SIZE_UART    30                  // Max RX size
-#define TX_SIZE_UART    10                  // Max TX size
-#define UART_TX_Q_SIZE  5                   // UART queue size
 #define CELL_UV_THRESH  3.0f                // Cell undervoltage threshold
 #define CELL_OV_THRESH  4.3f                // Cell overvoltage threshold
 #define NUM_TEMP        2                   // Number of thermistor ADCs
 #define NUM_CHANNELS    16                  // Number of channels per thermistor ADC
+#define RX_SIZE_UART    30                  // Max RX size
+#define TX_SIZE_UART    10                  // Max TX size
+#define ID_HLC          0                   // ID for the master PCB
+#define LLC_MAX         6                   // Max number of LLCs the system supports
 
 // Enumerations
 //typedef enum {
@@ -139,7 +140,9 @@ typedef struct {
     uint32_t balance_flags;                 // Cell overcharge flag
     uint32_t balance_mask;                  // Cell balancing flag masks
 
-    uint16_t chan_temps[NUM_TEMP][NUM_CHANNELS]; // Converted temperature values
+    // Converted temperature values
+    uint16_t chan_temps[NUM_TEMP][NUM_CHANNELS];
+    uint16_t chan_temps_hlc[NUM_TEMP * NUM_CHANNELS * LLC_MAX];
 } cells_t;
 
 typedef struct {
@@ -161,16 +164,21 @@ typedef struct {
 
 typedef struct {
     CAN_HandleTypeDef*  can;                // CAN Handle
+    CAN_HandleTypeDef*  can_hlc;            // CAN Handle (for HLC to car)
     UART_HandleTypeDef* uart;               // UART Handle
 
     q_handle_t          q_rx_can;           // CAN RX queue
     q_handle_t          q_tx_can;           // CAN TX queue
+
+    q_handle_t          q_rx_can_hlc;       // CAN RX queue (for HLC to car)
+    q_handle_t          q_tx_can_hlc;       // CAN TX queue (for HLC to car)
 
     afe_t               afe;                // AFE voltage readings and parameters
 
     params_t            module_params;      // Module parameters
     boot_historic_t     boot_stat;          // Module boot type
     cells_t             cells;              // Module cell data
+    cells_t             cells_con[LLC_MAX]; // Conglomeration of all cells in the system (excluding those on HLC)
     manual_override_t   override;           // User configurable overrides
 
     uint8_t             id;                 // PCB ID

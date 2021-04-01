@@ -18,10 +18,15 @@ void initBms()
 {
     // TODO: Check boot type. If boot = 0, wait for GUI response before we do anything
     bms.id = 0xff;
-    init_accum();
-    init_afe();
+    initAccum();
+    initAfe();
     initLTC();
-    SUCCESS;
+
+    // Initialize queues
+    qConstruct(&bms.q_rx_can, sizeof(CanRxMsgTypeDef));
+    qConstruct(&bms.q_tx_can, sizeof(CanTxMsgTypeDef));
+    qConstruct(&bms.q_rx_can_hlc, sizeof(CanRxMsgTypeDef));
+    qConstruct(&bms.q_tx_can_hlc, sizeof(CanTxMsgTypeDef));
 }
 
 void initScheduler()
@@ -79,7 +84,10 @@ void pauseTasks()
 void TIM14_IRQHandler()
 {
 	TIM2->SR &= ~TIM_SR_UIF;                            // Acknowledge the interrupt
-    ++scheduler.os_ticks;                               // Increase tick count
+    ++scheduler.os_ticks;                               // Increase tick count (since counter will rollover to ARR once per ms)
+
+    // TODO: Find places where I used TIM2->CNT and fix
+    // TODO: Add free running counter if we need
 
     scheduler.run_next = 1;                             // Let the main loop know it should run
 }

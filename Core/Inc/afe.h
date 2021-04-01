@@ -147,7 +147,7 @@ float scale_factor;                 // (2 * V_REF) / 65535
 extern UART_HandleTypeDef huart1;   // UART 1 handle
 
 // Prototypes
-void afeInit();                     // Initializes the AFE and ups baud on first boot
+void initAfe();                     // Initializes the AFE and ups baud on first boot
 void afeProcess();                  // Communicates with AFE and pulls ADC values
 void calcBalance();                 // Determines which cells require balancing
 
