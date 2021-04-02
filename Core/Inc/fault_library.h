@@ -16,7 +16,10 @@
 // Be sure to include headers with locations to functions!
 #include "bms.h"
 
-#define PERIOD_FAULT_TASK 50 //ms
+#define PER 1
+#define GREAT PER
+
+#define FAULT_LIB_PERIOD 1 //ms
 
 #define FAULT_MAX 32
 
@@ -24,7 +27,9 @@
 
 // GENERATED VALUES ------
 typedef enum { OVERVOLTAGE_FAULT_NUM, UNDERVOLTAGE_FAULT_NUM, OVER_SOC_FAULT_NUM, UNDER_SOC_FAULT_NUM, AFE1_CONNECTION_FAULT_NUM, AFE2_CONNECTION_FAULT_NUM, TEMP_IMPLAUS_FAULT_NUM, TEMP_HIGH_FAULT_NUM, TEMP_CONNECTION_FAULT_NUM, NO_IDX_FAULT_NUM, MASTER_DISCONNECT_FAULT_NUM, SLAVE_DISCONNECT_FAULT_NUM } fault_name_t;
-
+#define HISTORIC_INIT 0x0
+#define ENABLE_INIT 0xfff
+#define CRITICALITY_INIT 0xaaaaaa
 // END GENERATED VALUES ---------
 
 typedef struct {
@@ -36,15 +41,10 @@ typedef struct {
 
 typedef struct {
   volatile fault_stored_t stored;
-  uint16_t rise_threshold[FAULT_MAX];
-  uint16_t fall_threshold[FAULT_MAX];
-  uint16_t current_time[FAULT_MAX];
-  void (*set_handler[FAULT_MAX])(); //function pointer
-  void (*cont_handler[FAULT_MAX])();
-  void (*off_handler[FAULT_MAX])();
+  uint16_t cycle_count[FAULT_MAX]; // cycles since first signal
+  uint16_t signal_count[FAULT_MAX]; // signals seen since first signal
   uint32_t historic_type;
   uint32_t enable_type;
-
 } fault_t;
 
 fault_t faults;
@@ -66,6 +66,7 @@ typedef enum {
 } fault_enable_t;
 
 void faultLibInitialize();
+void faultLibUpdate();
 void signalFault(uint8_t loc);
 void faultLibShutdown();
 void clearHistory();

@@ -1,150 +1,136 @@
 #include "fault_library.h"
 
-//TaskHandle_t Faul_Task_Handle;
-uint8_t task_active = 0;
-
-void faultTask();
 void callFunction(uint8_t bit_num, void (*handlers[])());
 void setFault(uint8_t loc, uint8_t val);
 void setHistoric(uint8_t loc, uint8_t val);
 void setCriticality(uint8_t loc, uint8_t val);
 
 // GENERATED VALUES --------
-const uint16_t rise_init[FAULT_MAX] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-const uint16_t fall_init[FAULT_MAX] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-// TODO: Move to header and use hex
-#define HISTORIC_INIT 0b00000000000000000000000000000000
-#define ENABLE_INIT 0b00000000000000000000111111111111
-#define CRITICALITY_INIT 0b0000000000000000000000000000000000000000101010101010101010101010
-const void (*set_handler_init[FAULT_MAX])() = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
-const void (*cont_handler_init[FAULT_MAX])() = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
-const void (*off_handler_init[FAULT_MAX])() = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
+const uint16_t rise_threshold[FAULT_MAX] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+const uint16_t fall_threshold[FAULT_MAX] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+const uint8_t signal_period[FAULT_MAX] = {5, 1, 5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+const void (*set_handler[FAULT_MAX])() = {overvoltageFaultSet, NULL, overSOCFaultSet, NULL, NULL, NULL, NULL, NULL, tempConnectionFaultSet, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
+const void (*cont_handler[FAULT_MAX])() = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
+const void (*off_handler[FAULT_MAX])() = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
 // END GENERATED VALUES -------
 
-
-//starts the fault task
+//starts the fault Update
 void faultLibInitialize()
 {
   eepromLoadStruct(FAULT_EEPROM_NAME);
-
-  memcpy(faults.rise_threshold, rise_init, sizeof(faults.rise_threshold));
-  memcpy(faults.fall_threshold, fall_init, sizeof(faults.fall_threshold));
-  // Convert thresholds from ms to ticks
-  for(int i = 0; i < FAULT_MAX; i++)
-  {
-    faults.rise_threshold[i] /= PERIOD_FAULT_TASK;
-    faults.fall_threshold[i] /= PERIOD_FAULT_TASK;
-  }
   faults.historic_type = HISTORIC_INIT;
   faults.enable_type = ENABLE_INIT;
   faults.stored.criticality = CRITICALITY_INIT;
-  memcpy(faults.set_handler, set_handler_init, sizeof(faults.set_handler));
-  memcpy(faults.cont_handler, cont_handler_init, sizeof(faults.cont_handler));
-  memcpy(faults.off_handler, off_handler_init, sizeof(faults.off_handler));
-
   faults.stored.signal = 0;
   faults.stored.set = 0;
-
-  // TODO: get rid of RTOS task functions
-  task_active = 1;
-  // TODO: Schedule with scheduler
 }
 
-//main loop
-void faultTask()
+//main, call periodically at PERIOD_FAULT_TASK
+void faultLibUpdate()
 {
-  while (task_active)
+
+  for (int i = 0; i < FAULT_MAX; i++)
   {
-    uint32_t current_tick_time = TIM2->CNT;
-
-    for (int i = 0; i < FAULT_MAX; i++)
+    if (getHistoricOverriding(i) && getFaultEnabled(i) != FAULT_DISABLED)
     {
-      if (getHistoricOverriding(i) && getFaultEnabled(i) != FAULT_DISABLED)
+      callFunction(i, cont_handler);
+      setFault(i, 1);
+    }
+    else if (getFaultSet(i))
+    {
+      //fault is currently active
+      callFunction(i, cont_handler);
+
+      if (fall_threshold[i] == 0)
       {
-        callFunction(i, faults.cont_handler);
-        setFault(i, 1);
+        // fall threshold infinite
       }
-      else if (getFaultSet(i))
+      else if (getFaultSignal(i)) 
       {
-        //fault is currently active
-        callFunction(i, faults.cont_handler);
-
-        if (getFaultSignal(i))
-        {
-          //reset cooldown counter if set again
-          faults.current_time[i] = 0;
-        }
-        else if (faults.fall_threshold[i] == 0)
-        {
-          // fall threshold infinite
-        }
-        else if (faults.current_time[i] >= faults.fall_threshold[i])
-        {
-          // It fell for the minimum time, turn fault off
-          setFault(i, 0);
-          // reset counter for rise
-          faults.current_time[i] = 0;
-          callFunction(i, faults.off_handler);
-        }
-        else
-        {
-          //Currently falling, increment timer
-          faults.current_time[i]++;
-        }
-      }
-      else if(getFaultSignal(i) && getFaultEnabled(i) != FAULT_DISABLED)
-      {
-        // fault is not set, use rise counter
-
-        // if rise threshold is 0, instant set
-        if (faults.current_time[i] < faults.rise_threshold[i])
-        {
-          faults.current_time[i]++;
-        }
-        else
-        {
-          // fault set, reset timer for cooldown
-          setFault(i, 1);
-          setHistoric(i, 1);
-          faults.current_time[i] = 0;
-          callFunction(i, faults.set_handler);
-
-          //Called once
-          switch(getCriticality(i))
-          {
-            case FAULT_WARNING:
-              handleWarningFault();
-            break;
-            case FAULT_ERROR:
-              handleErrorFault();
-            break;
-            case FAULT_CRITICAL:
-              handleCriticalFault();
-            break;
-          }
-
-        }
+        //reset cooldown counter if set again
+        faults.cycle_count[i] = 0;
       }
       else
       {
-        //fault and signal off, reset timer
-        faults.current_time[i] = 0;
+        faults.cycle_count[i]++;
       }
 
-    }// end for loop
+      // done falling condition
+      if (fall_threshold[i] != 0 &&
+          faults.cycle_count[i] >= fall_threshold[i] / FAULT_LIB_PERIOD)
+      {
+        // It fell for the minimum time, turn fault off
+        setFault(i, 0);
+        // reset counters for rise
+        faults.cycle_count[i] = 0;
+        faults.signal_count[i] = 0;
+        callFunction(i, off_handler);
+      }
+    }
+    else 
+    {
+      // rising counter section
 
-    //read signals, reset for next cycle
-    faults.stored.signal = 0;
-  }
+      // increment signal and count or just cycle
+      if (getFaultSignal(i) && getFaultEnabled(i) == FAULT_ENABLED)
+      {
+        faults.signal_count[i]++;
+        faults.cycle_count[i]++;
+      }
+      else if (faults.cycle_count[i] != 0)
+      {
+        faults.cycle_count[i]++;
+      }
+
+      // reset condition
+      if ( faults.cycle_count[i] >= (faults.signal_count[i] + 2) * 
+           signal_period[i] / FAULT_LIB_PERIOD)
+      {
+        // not enough signaling of the fault, reset counters
+        faults.signal_count[i] = 0;
+        faults.cycle_count[i] = 0;
+      }
+
+      // set condition
+      if ( faults.signal_count[i] > 0 &&
+           faults.cycle_count[i] >= rise_threshold[i] / FAULT_LIB_PERIOD &&
+           faults.signal_count[i] >= rise_threshold[i] / signal_period[i])
+      {
+        // fault has met the requirements to be set
+        setFault(i, 1);
+        setHistoric(i, 1);
+        faults.signal_count[i] = 0;
+        faults.cycle_count[i] = 0;
+
+        callFunction(i, set_handler);
+
+        //Called once
+        switch (getCriticality(i))
+        {
+          case FAULT_WARNING:
+            handleWarningFault();
+          break;
+          case FAULT_ERROR:
+            handleErrorFault();
+          break;
+          case FAULT_CRITICAL:
+            handleCriticalFault();
+          break;
+        }
+      }
+
+    }
+
+  }// end for loop
+
+  //read signals, reset for next cycle
+  faults.stored.signal = 0;
+
 }
 
 void faultLibShutdown()
 {
-  if(task_active) {
-    //vTaskDelete(Faul_Task_Handle);
-    task_active = 0; //stops main loop
     eepromSaveStruct(FAULT_EEPROM_NAME);
-  }
 }
 
 //clears history on controller and in eeprom

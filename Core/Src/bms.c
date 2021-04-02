@@ -105,6 +105,8 @@ void mainLoop()
         // TODO: Ensure that model runs prior to calculating new balance flags
         calcBalance();
         acquireTemp();
+        // TODO: faultLibUpdate(); // also, if moved to different rate, update the new rate in fault_library.h
+        
 
         // 5 ms functions
         if (scheduler.os_ticks % 5 == 0)
