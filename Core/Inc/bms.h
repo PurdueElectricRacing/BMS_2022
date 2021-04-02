@@ -99,6 +99,8 @@ typedef struct {
     board_layout_t  layout;                 // Setup of PCB for any specific nuances
     uint32_t        eeprom_size;            // Size for the EEPROM IC on a given PCB
     uint8_t         cells_series;           // Number of cells in series
+    uint8_t         temp_ic;                // Deprecated value for number of temp ICs
+    uint8_t         temp_chan;              // Deprecated value for number of channels per IC
 } params_t;
 
 typedef struct {

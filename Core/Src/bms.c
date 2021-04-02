@@ -27,6 +27,11 @@ void initBms()
     qConstruct(&bms.q_tx_can, sizeof(CanTxMsgTypeDef));
     qConstruct(&bms.q_rx_can_hlc, sizeof(CanRxMsgTypeDef));
     qConstruct(&bms.q_tx_can_hlc, sizeof(CanTxMsgTypeDef));
+
+    // Initial values
+    bms.cells.balance_flags    = 0;
+    bms.cells.balance_mask     = 0;
+    bms.override.balance_force = 0;
 }
 
 void initScheduler()
@@ -99,12 +104,21 @@ void mainLoop()
         scheduler.core.task_entry_time = scheduler.os_ticks;                                                    // Update task entry time
         scheduler.run_next = 0;                                                                                 // Update run flag to let scheduler know we're working on next task
 
-        // TODO: Call functions
         // 1 ms functions
         afeProcess();
         // TODO: Ensure that model runs prior to calculating new balance flags
-        calcBalance();
+        //calcBalance(); This process has moved to trackAccum();
         acquireTemp();
+
+        // Send CAN frames waiting in queue
+        txCan();
+        if (bms.id == ID_HLC)
+        {
+            txCanHLC();
+        }
+
+        // Receive CAN frames from HLC/LLC
+        void canProcess();
 
         // 5 ms functions
         if (scheduler.os_ticks % 5 == 0)
@@ -115,7 +129,7 @@ void mainLoop()
         // 50 ms functions
         if (scheduler.os_ticks % 50 == 0)
         {
-
+            txData();
         }
 
         scheduler.core.task_time = scheduler.os_ticks - scheduler.core.task_entry_time;                         // Store task closing time

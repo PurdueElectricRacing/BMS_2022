@@ -33,6 +33,49 @@ void txCan()
     }
 }
 
+void txData()
+{
+    // Locals
+    CanTxMsgTypeDef tx;                                             // Tx frame to send
+    uint8_t         i;                                              // Loop control variable
+    uint8_t         j;                                              // Loop control variable
+
+    tx.DLC = 8;                                                     // Send 2 bytes
+    tx.IDE = CAN_ID_STD;                                            // Standard length ID
+    tx.RTR = CAN_RTR_DATA;                                          // Data frame
+    tx.StdId = ID_CELL_V;                                           // Voltage ID
+    tx.Data[0] = bms.id;                                            // Module ID
+
+    for (i = 0; i < ciel(bms.module_params.cells_series / 3.0); ++i)
+    {
+        tx.Data[1] = i;
+        tx.Data[3] = (uint8_t) bms.cells.chan_volts_raw[i * 3];
+        tx.Data[2] = (uint8_t) (bms.cells.chan_volts_raw[i * 3] >> 8);
+        tx.Data[5] = (uint8_t) bms.cells.chan_volts_raw[i * 3 + 1];
+        tx.Data[4] = (uint8_t) (bms.cells.chan_volts_raw[i * 3 + 1] >> 8);
+        tx.Data[7] = (uint8_t) bms.cells.chan_volts_raw[i * 3 + 2];
+        tx.Data[6] = (uint8_t) (bms.cells.chan_volts_raw[i * 3 + 2] >> 8);
+
+        qSendToBack(&bms.q_tx_can, &tx);
+    }
+
+    for (i = 0; i < ciel(bms.module_params.temp_chan / 3.0); ++i)
+    {
+        for (j = 0; j < bms.module_params.temp_ic; ++j)
+        {
+            tx.Data[1] = i;
+            tx.Data[3] = (uint8_t) bms.cells.chan_temps[j][i * 3];
+            tx.Data[2] = (uint8_t) (bms.cells.chan_temps[j][i * 3] >> 8);
+            tx.Data[5] = (uint8_t) bms.cells.chan_temps[j][i * 3 + 1];
+            tx.Data[4] = (uint8_t) (bms.cells.chan_temps[j][i * 3 + 1] >> 8);
+            tx.Data[7] = (uint8_t) bms.cells.chan_temps[j][i * 3 + 2];
+            tx.Data[6] = (uint8_t) (bms.cells.chan_temps[j][i * 3 + 2] >> 8);
+
+            qSendToBack(&bms.q_tx_can, &tx);
+        }
+    }
+}
+
 static void txError(uint8_t id)
 {
     // Locals

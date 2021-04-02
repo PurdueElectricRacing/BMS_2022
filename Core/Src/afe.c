@@ -107,6 +107,15 @@ static void wakeup()
     tx(cmd, 5);
 }
 
+//void HAL_UART_RxCpltCallback(UART_HandleTypeDef* huart)
+//{
+//    uart_rx_t rx;
+//    rx.rx_size = RX_SIZE_UART;
+//    memcpy(rx.rx_buffer, myrx_data, rx.rx_size);
+//    qSendToBack(&lcd.q_rx_uart, &rx);
+//    HAL_UART_Receive_IT(lcd.uart, myrx_data, RX_SIZE_UART); //start the receive
+//}
+
 // @funcname: afe_init()
 //
 // @brief: Initializes the AFE to run at 1 Mb, and precomputes required values
@@ -307,6 +316,51 @@ void afeConv()
 void afeProcess()
 {
     // Locals
-    uint8_t   cmd[8];                                                               // Command bytes (no device address/group id byte)
-    uint16_t  crc;                                                                  // Calculated CRC for data
+    uint8_t            cmd[10];                                                     // Command bytes (no device address/group id byte)
+    uint16_t           crc;                                                         // Calculated CRC for data
+    static uint8_t     data[27];                                                    // Buffer
+    static uint8_t     i;                                                           // Wait timer
+    afe_state_t        next_state;                                                  // Next state in FSM
+    static afe_state_t state;                                                       // Current state of FSM
+
+    next_state = state;
+
+    switch (state)
+    {
+        case INIT:
+        {
+
+        }
+        // No break
+
+        case SAMPLE:
+        {
+            cmd[0] = RESET | (CMD_FRAME << 7) | (WRITE_SINGLE_R << 4) | (BIT_8 << 3) | BYTE_5;
+            cmd[1] = 0x00;
+            cmd[2] = CMD;
+            cmd[3] = 0x2;   // If not working, try 0x0
+            cmd[4] = 0xff;
+            cmd[5] = 0xff;
+            cmd[6] = 0x01;
+            cmd[7] = 0x00;
+            crc = crc_16_ibm(cmd, 6);
+            cmd[8] = crc >> 8;
+            cmd[9] = (uint8_t) crc;
+            tx(cmd, 10);
+
+            HAL_UART_Receive_IT(&huart1, data, 27);
+
+            next_state = WAIT_A;
+            break;
+        }
+
+        case WAIT_A:
+        {
+            if (i++ == 100)
+            {
+                i = 0;
+                next_state = SAMPLE;
+            }
+        }
+    }
 }
