@@ -2,6 +2,7 @@
 #define _CAN_H_
 
 #include "bms.h"
+#include "math.h"
 #include "stm32l4xx_hal_can.h"
 
 // Defines
@@ -61,5 +62,11 @@ typedef struct {
                              This parameter can be CAN_FIFO0 or CAN_FIFO1 */
 
 } CanRxMsgTypeDef;
+
+// Prototypes
+void txCan();
+void txData();
+void txCanHLC();
+void canProcess();
 
 #endif

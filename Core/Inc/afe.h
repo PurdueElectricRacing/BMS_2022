@@ -133,10 +133,15 @@
 #define EE_BURN             0xFA    // EEPROM Burn Count; up-counter
 #define MAGIC2              0xFC    // "Magic" value enables EEPROM write
 
+// Commands
+#define SAMPLE_REQUEST      0x1     // Request sampling of voltage values
+
 // Enumerations
 typedef enum {
     INIT,                           // Initialization state
     SLEEP,                          // Sleep state
+    SAMPLE,                         // Sampling values
+    WAIT_A,                         // Wait state
     AFE_STATE_COUNT                 // Must be last
 } afe_state_t;
 
