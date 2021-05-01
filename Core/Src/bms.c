@@ -109,6 +109,8 @@ void mainLoop()
         // TODO: Ensure that model runs prior to calculating new balance flags
         //calcBalance(); This process has moved to trackAccum();
         acquireTemp();
+        // TODO: faultLibUpdate(); // also, if moved to different rate, update the new rate in fault_library.h
+        
 
         // Send CAN frames waiting in queue
         txCan();
