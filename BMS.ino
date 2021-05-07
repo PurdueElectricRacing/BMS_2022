@@ -1,5 +1,5 @@
 #define CELL_MAX      4.2f
-#define CELL_MIN      3.7f
+#define CELL_MIN      3.0f
 #define ADC_VOLTS     5
 #define DEBUG
 
