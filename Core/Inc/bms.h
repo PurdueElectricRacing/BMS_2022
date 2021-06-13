@@ -27,8 +27,7 @@
 #define FCLK            80                  // Fclk freuqency in MHz
 #define CELL_UV_THRESH  3.0f                // Cell undervoltage threshold
 #define CELL_OV_THRESH  4.3f                // Cell overvoltage threshold
-#define NUM_TEMP        2                   // Number of thermistor ADCs
-#define NUM_CHANNELS    16                  // Number of channels per thermistor ADC
+#define NUM_CHANNELS    32                  // Number of thermistor channels 
 #define RX_SIZE_UART    30                  // Max RX size
 #define TX_SIZE_UART    10                  // Max TX size
 #define ID_HLC          0                   // ID for the master PCB
@@ -143,8 +142,7 @@ typedef struct {
     uint32_t balance_mask;                  // Cell balancing flag masks
 
     // Converted temperature values
-    uint16_t chan_temps[NUM_TEMP][NUM_CHANNELS];
-    uint16_t chan_temps_hlc[NUM_TEMP * NUM_CHANNELS * LLC_MAX];
+    uint16_t chan_temps[NUM_CHANNELS];
 } cells_t;
 
 typedef struct {
