@@ -1,8 +1,10 @@
 #include <gtk-3.0/gtk/gtk.h>
+#include <stdlib.h>
 #include "main.h"
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include "connect.h"
 #include "data.h"
 
@@ -29,14 +31,98 @@ int main(int argc, char *argv[])
     dataInit(&wdgts);
     connInit(&wdgts);
 
-    gdk_threads_add_timeout(200, bgLoop, NULL);
+    if(checkOnlyProcess())
+    {
+        return EXIT_FAILURE;
+    }
+
+    gdk_threads_add_timeout(1000, bgLoop, NULL);
 
     g_object_unref(builder);
 
     gtk_widget_show(window);
     gtk_main();
 
-    return 0;
+    return EXIT_SUCCESS;
+}
+
+static void hardFault(uint8_t type)
+{
+    // Locals
+    GtkDialogFlags flags;
+    GtkWidget*     dialog;
+
+    flags = GTK_DIALOG_DESTROY_WITH_PARENT;
+
+    switch (type)
+    {
+        case PROCESS_OPEN:
+            dialog = gtk_message_dialog_new(NULL, flags, GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE, "Error: Cannot open GUI with another instance running");
+            break;
+
+        case BAD_HOME:
+            dialog = gtk_message_dialog_new(NULL, flags, GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE, "Error: Improper home directory set");
+            break;
+        
+        default:
+            dialog = gtk_message_dialog_new(NULL, flags, GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE, "Error: Something went wrong");
+    }
+
+    gtk_dialog_run (GTK_DIALOG (dialog));
+    gtk_widget_destroy (dialog);
+}
+
+int checkOnlyProcess()
+{
+    // Locals
+    FILE*  fptr;
+    char*  dir;
+    size_t dirlen;
+    char*  fpath;
+    char   buff[9];
+    int    ret;
+
+    ret = 0;
+
+    sprintf(buff, "%s", "bms_open");
+    dir = getenv("HOME");
+    if (dir == NULL || dir[0] != '/')
+    {
+        hardFault(BAD_HOME);
+    }
+
+    dirlen = strlen(dir);
+    fpath = malloc(sizeof(dirlen + 3));
+    
+    if (fpath == NULL)
+    {
+        hardFault(255);
+    }
+
+    sprintf(fpath, "%s%s", dir, "/1");
+    fptr = fopen(fpath, "r");
+    
+    if (fptr == NULL)
+    {
+        fptr = fopen(fpath, "wb+");
+
+        if (fptr == NULL)
+        {
+            hardFault(255);
+        }
+        else
+        {
+            fwrite(buff, sizeof(char), sizeof("bms_open"), fptr);
+        }
+    }
+    else
+    {
+        hardFault(PROCESS_OPEN);
+        ret = -1;
+    }
+
+    fclose(fptr);
+    return ret;
 }
 
 void initItems()
@@ -91,5 +177,41 @@ void btn_callback(GtkMenuItem *menuitem, app_widgets *app_wdgts)
 
 void on_window_main_destroy(GtkMenuItem *menuitem, app_widgets *app_wdgts)
 {
+    // Locals
+    FILE*  fptr;
+    char*  dir;
+    size_t dirlen;
+    char*  fpath;
+    char   buff[9];
+
+    sprintf(buff, "%s", "bms_open");
+    dir = getenv("HOME");
+    if (dir == NULL || dir[0] != '/')
+    {
+        hardFault(BAD_HOME);
+    }
+
+    dirlen = strlen(dir);
+    fpath = malloc(sizeof(dirlen + 3));
+    
+    if (fpath == NULL)
+    {
+        hardFault(255);
+    }
+
+    sprintf(fpath, "%s%s", dir, "/1");
+
+    fptr = fopen(fpath, "r");
+    
+    if (fptr != NULL)
+    {
+        fclose(fptr);
+        remove(fpath);
+    }
+    else
+    {
+        fclose(fptr);
+    }
+
     gtk_main_quit();
 }

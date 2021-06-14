@@ -1,6 +1,15 @@
 #ifndef _MAIN_H_
 #define _MAIN_H_
 
+// Defines
+#define INSTANCE_LOCK "bms-gui-lock"
+
+// Enumerations
+enum {
+    PROCESS_OPEN,
+    BAD_HOME
+};
+
 // Structures
 typedef struct {
     GtkWidget *w_txtvw_main;            // Pointer to text view object
@@ -37,6 +46,7 @@ typedef struct {
 } app_widgets_usr;
 
 // Function prototypes
+int checkOnlyProcess();
 void initItems();
 void btn_callback(GtkMenuItem *menuitem, app_widgets *app_wdgts);
 
