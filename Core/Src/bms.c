@@ -20,7 +20,6 @@ void initBms()
     bms.id = 0xff;
     initAccum();
     initAfe();
-    initLTC();
 
     // Initialize queues
     qConstruct(&bms.q_rx_can, sizeof(CanRxMsgTypeDef));

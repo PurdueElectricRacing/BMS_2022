@@ -38,14 +38,13 @@ void txData()
     // Locals
     CanTxMsgTypeDef tx;                                             // Tx frame to send
     uint8_t         i;                                              // Loop control variable
-    uint8_t         j;                                              // Loop control variable
 
     tx.DLC = 8;                                                     // Send 2 bytes
     tx.IDE = CAN_ID_STD;                                            // Standard length ID
     tx.RTR = CAN_RTR_DATA;                                          // Data frame
-    tx.StdId = ID_CELL_V;                                           // Voltage ID
     tx.Data[0] = bms.id;                                            // Module ID
 
+    tx.StdId = ID_CELL_V;                                           // Voltage ID
     for (i = 0; i < ciel(bms.module_params.cells_series / 3.0); ++i)
     {
         tx.Data[1] = i;
@@ -59,20 +58,38 @@ void txData()
         qSendToBack(&bms.q_tx_can, &tx);
     }
 
+    tx.StdId = ID_CELL_T;                                           // Temperature ID
     for (i = 0; i < ciel(bms.module_params.temp_chan / 3.0); ++i)
     {
-        for (j = 0; j < bms.module_params.temp_ic; ++j)
-        {
-            tx.Data[1] = i;
-            tx.Data[3] = (uint8_t) bms.cells.chan_temps[j][i * 3];
-            tx.Data[2] = (uint8_t) (bms.cells.chan_temps[j][i * 3] >> 8);
-            tx.Data[5] = (uint8_t) bms.cells.chan_temps[j][i * 3 + 1];
-            tx.Data[4] = (uint8_t) (bms.cells.chan_temps[j][i * 3 + 1] >> 8);
-            tx.Data[7] = (uint8_t) bms.cells.chan_temps[j][i * 3 + 2];
-            tx.Data[6] = (uint8_t) (bms.cells.chan_temps[j][i * 3 + 2] >> 8);
 
-            qSendToBack(&bms.q_tx_can, &tx);
+        tx.Data[1] = i;
+        tx.Data[3] = (uint8_t) bms.cells.chan_temps[i * 3];
+        tx.Data[2] = (uint8_t) (bms.cells.chan_temps[i * 3] >> 8);
+
+        if (i * 3 + 1 < bms.module_params.temp_chan)
+        {
+            tx.Data[5] = (uint8_t) bms.cells.chan_temps[i * 3 + 1];
+            tx.Data[4] = (uint8_t) (bms.cells.chan_temps[i * 3 + 1] >> 8);
         }
+        else
+        {
+            tx.Data[5] = 0;
+            tx.Data[4] = 0;
+        }
+
+        if (i * 3 + 2 < bms.module_params.temp_chan)
+        {
+            tx.Data[7] = (uint8_t) bms.cells.chan_temps[i * 3 + 2];
+            tx.Data[6] = (uint8_t) (bms.cells.chan_temps[i * 3 + 2] >> 8);
+        }
+        else
+        {
+            tx.Data[7] = 0;
+            tx.Data[6] = 0;
+        }
+        
+
+        qSendToBack(&bms.q_tx_can, &tx);
     }
 }
 
@@ -142,9 +159,18 @@ void canProcess() {
                         return;
                     }
                     // Pull 3 temp measurement out
-                    bms.cells_con[serial - 1].chan_temps_hlc[rx.Data[1]] = ((uint16_t) rx.Data[3]) | (((uint16_t) rx.Data[2]) << 8);
-                    bms.cells_con[serial - 1].chan_temps_hlc[rx.Data[1] + 1] = ((uint16_t) rx.Data[5]) | (((uint16_t) rx.Data[4]) << 8);
-                    bms.cells_con[serial - 1].chan_temps_hlc[rx.Data[1] + 2] = ((uint16_t) rx.Data[7]) | (((uint16_t) rx.Data[6]) << 8);
+                    if (rx.Data[1] < NUM_CHANNELS)
+                    {
+                        bms.cells_con[serial - 1].chan_temps[rx.Data[1]] = ((uint16_t) rx.Data[3]) | (((uint16_t) rx.Data[2]) << 8);
+                    }
+                    if (rx.Data[1] + 1 < NUM_CHANNELS)
+                    {
+                        bms.cells_con[serial - 1].chan_temps[rx.Data[1] + 1] = ((uint16_t) rx.Data[5]) | (((uint16_t) rx.Data[4]) << 8);
+                    }
+                    if (rx.Data[1] + 2 < NUM_CHANNELS)
+                    {
+                        bms.cells_con[serial - 1].chan_temps[rx.Data[1] + 2] = ((uint16_t) rx.Data[7]) | (((uint16_t) rx.Data[6]) << 8);
+                    }
                     break;
 
                 case ID_BMS_ERR:                                    // LLC has noticed an error in the system
