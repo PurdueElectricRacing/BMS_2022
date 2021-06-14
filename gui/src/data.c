@@ -236,7 +236,7 @@ gboolean bgLoop(void* nothing)
         gtk_label_set_text(GTK_LABEL(wdgts_data->label_cv9), "NULL");
         gtk_label_set_text(GTK_LABEL(wdgts_data->label_cv10), "NULL");
         gtk_label_set_text(GTK_LABEL(wdgts_data->label_min_volts), "NULL");
-        gtk_label_set_text(GTK_LABEL(wdgts_data->label_min_volts), "NULL");
+        gtk_label_set_text(GTK_LABEL(wdgts_data->label_min_temp), "NULL");
         gtk_label_set_text(GTK_LABEL(wdgts_data->label_max_volts), "NULL");
         gtk_label_set_text(GTK_LABEL(wdgts_data->label_max_temp), "NULL");
         gtk_label_set_text(GTK_LABEL(wdgts_data->label_avg_volts), "NULL");
