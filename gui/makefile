@@ -2,10 +2,10 @@
 TARGET = bms
 
 # Source files
-SRCS = src/main.c
+SRCS = src/main.c src/data.c src/connect.c
 
 # Object files
-OBJST = main.o
+OBJST = main.o data.o connect.o
 
 # Compiler
 CC = gcc
@@ -13,12 +13,14 @@ CC = gcc
 DEBUG = -g
 # Optimization
 OPT = -O0
+# GTK specific
+GTK_SPEC = -rdynamic
 # Warnings
 WARN = -Wall
 
 PTHREAD = -pthread
 
-CCFLAGS = $(DEBUG) $(OPT) $(WARN) $(PTHREAD) -pipe
+CCFLAGS = $(DEBUG) $(GTK_SPEC) $(OPT) $(WARN) $(PTHREAD) -pipe
 
 GTKLIB = `pkg-config --cflags --libs gtk+-3.0`
 
@@ -36,6 +38,7 @@ bms: $(OBJS)
 	$(CC) -c $(CCFLAGS) $*.c $(GTKLIB)
 
 clean:
+	rm -f *.o
 	rm -f $(TARGET)
 
 remake: clean bms
