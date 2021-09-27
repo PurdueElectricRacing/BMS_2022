@@ -2,158 +2,216 @@
 #define _AFE_H_
 
 // Includes
-#include "bms.h"
+#include "main.h"
 #include "string.h"
 
 // Generic Defines
-#define V_REF               2.5     // Internal VREF value
-#define RESET               0x0     // Command reset value
-#define TIMEOUT             5       // Tx/rx timeout
-#define WAIT_QUEUE_FULL     30      // Queue full timeout
-#define THRESH_CONV         0.025f  // OV/UV conversion factor
+// SPI
+#define LTC6811_SPI     	&hspi1
+#define LTC6811_ADDR_ONE	0x1
+#define LTC6811_ADDR_TWO	0x2
+#define LTC6811_REG_SIZE    6
 
-// Frame Types
-#define RESP_FRAME          0x0     // Response frame
-#define CMD_FRAME           0x1     // Command frame
+// Voltage Flags
+#define LTC6811_MAX_PCKV 	50.4 //Max Pack voltage cutoff
+#define LTC6811_MIN_PCKV 	30   //Min pack voltage cutoff
 
-// Request Types
-#define WRITE_SINGLE_R      0x0     // Single device write with response
-#define WRITE_SINGE_WOR     0x1     // Single device write without response
-#define WRITE_GROUP_R       0x2     // Group write with response
-#define WRITE_GROUP_WOR     0x3     // Group write without response
-#define WRITE_BRD_R         0x6     // Broadcast write with response
-#define WRITE_BRD_WOR       0x7     // Broadcast write without response
+// ADCV
+#define	NORMAL_MODE			0x2
+#define REG_A				0x4
+#define REG_B				0x6
+#define REG_C				0x8
+#define REG_D				0xA
+#define REG_E				0x9
+#define REG_F				0xB
+#define SIX_TAU				(0.000864 * SystemCoreClock) //Six tau wait period for
+#define CNV_TIME			(0.002335 * SystemCoreClock)
 
-// Address Sizes
-#define BIT_8               0x0     // 8-bit register address
-#define BIT_16              0x1     // 16-bit register address
+// RDCV
+#define RDCVA               0x0004  /** Read the Cell Voltage Register A (CVAR) */
+#define RDCVB               0x0006  /** Read the Cell Voltage Register B (CVBR) */
+#define RDCVC               0x0008  /** Read the Cell Voltage Register C (CBCR) */
+#define RDCVD               0x000A  /** Read the Cell Voltage Register D (CBDR) */
 
-// Data Sizes
-#define BYTE_0              0x0     // 0 bytes
-#define BYTE_1              0x1     // 1 byte
-#define BYTE_2              0x2     // 2 bytes
-#define BYTE_3              0x3     // 3 bytes
-#define BYTE_4              0x4     // 4 bytes
-#define BYTE_5              0x5     // 5 bytes
-#define BYTE_6              0x6     // 6 bytes
-#define BYTE_8              0x7     // 8 bytes
+// Timings
+#define TYP_T_WAKE          200 /**< [us] */
+#define MAX_T_WAKE          400 /**< [us] */
 
-// Registers (Page 67)
-#define SREV                0x00    // Silicon revision
-#define CMD                 0x02    // Command
-#define CHANNELS            0x03    // Command channel select
-#define OVERSMPL            0x07    // Command averaging (oversampling)
-#define ADDR                0x0A    // Device address
-#define GROUP_ID            0x0B    // (Device) Group Identifier
-#define DEV_CTRL            0x0C    // Device control
-#define NCHAN               0x0D    // Number of channels for conversion
-#define DEVCONFIG           0x0E    // Device configuration
-#define PWRCONFIG           0x0F    // Power configuration
-#define COMCONFIG           0x10    // Communications configuration
-#define TXHOLDOFF           0x12    // UART Transmitter holdoff
-#define CBCONFIG            0x13    // Cell balancing (equalization) configuration
-#define CBENBL              0x14    // Cell balancing enables
-#define TSTCONFIG           0x1E    // Built-In Self-Test (BIST) configuration
-#define TESTCTRL            0x20    // BIST control
-#define TEST_ADC            0x22    // ADC BIST control
-#define TESTAUXPU           0x25    // Test control -- AUX pull-up resistors
-#define CTO                 0x28    // Communications time-out
-#define CTO_CNT             0x29    // Communications time-out counter
-#define AM_PER              0x32    // Auto-monitor period
-#define AM_CHAN             0x33    // Auto-monitor channel select
-#define AM_OSMPL            0x37    // Auto-monitor averaging
-#define SMPL_DLY1           0x3D    // Initial sampling delay
-#define CELL_SPER           0x3E    // Cell and die temperature measurement period
-#define AUX_SPER            0x3F    // AUX channels sampling period
-#define TEST_SPER           0x43    // ADC test sampling period
-#define SHDN_STS            0x50    // Shutdown recovery status
-#define STATUS              0x51    // Device status
-#define FAULT_SUM           0x52    // Fault summary
-#define FAULT_UV            0x54    // Undervoltage faults
-#define FAULT_OV            0x56    // Overvoltage faults
-#define FAULT_AUX           0x58    // AUX threshold exceeded faults
-#define FAULT_2UV           0x5A    // Somparator UV faults
+#define MIN_T_SLEEP         1800000 /**< [us] */
+#define TYP_T_SLEEP         2000000 /**< [us] */
+#define MAX_T_SLEEP         2200000 /**< [us] */
 
-// Registers (Page 68)
-#define FAULT_2OV           0x5C    // Comparator OV faults
-#define FAULT_COM           0x5E    // Communication faults
-#define FAULT_SYS           0x60    // System fault
-#define FAULT_DEV           0x61    // Device fault
-#define FAULT_GPI           0x63    // General purpose input (GPIO) fault
-#define MASK_COMM           0x68    // Communications FAULT mask register
-#define MASK_SYS            0x6A    // System FAULT mask register
-#define MASK_DEV            0x6B    // Chip fault mask register
-#define FO_CTRL             0x6E    // FAULT output control
-#define GPIO_DIR            0x78    // GPIO direction control
-#define GPIO_OUT            0x79    // GPIO output control
-#define GPIO_PU             0x7A    // GPIO pull-up resistor control
-#define GPIO_PD             0x7B    // GPIO pull-down resistor control
-#define GPIO_IN             0x7C    // GPIO input value
-#define GP_FILT_IN          0x7D    // GPIO input 0/1 FAULT assertion state
-#define MAGIC1              0x82    // "Magic" value enables EEPROM write
-#define COMP_UV             0x8C    // Comparator undervoltage threshold
-#define COMP_OV             0x8D    // Comparator overvoltage threshold
-#define CELL_UV             0x8E    // Cell undervoltage threshold
-#define CELL_OV             0x90    // Cell overvoltage threshold
-#define AUX0_UV             0x92    // AUX0 undervoltage threshold
-#define AUX0_OV             0x94    // AUX0 overvoltage threshold
-#define AUX1_UV             0x96    // AUX1 undervoltage threshold
-#define AUX1_OV             0x98    // AUX1 overvoltage threshold
-#define AUX2_UV             0x9A    // AUX2 undervoltage threshold
-#define AUX2_OV             0x9C    // AUX2 overvoltage threshold
-#define AUX3_UV             0x9E    // AUX3 undervoltage threshold
-#define AUX3_OV             0xA0    // AUX3 overvoltage threshold
-#define AUX4_UV             0xA2    // AUX4 undervoltage threshold
-#define AUX4_OV             0xA4    // AUX4 overvoltage threshold
-#define AUX5_UV             0xA6    // AUX5 undervoltage threshold
-#define AUX5_OV             0xA8    // AUX5 overvoltage threshold
-#define AUX6_UV             0xAA    // AUX6 undervoltage threshold
-#define AUX6_OV             0xAC    // AUX6 overvoltage threshold
-#define AUX7_UV             0xAE    // AUX7 undervoltage threshold
-#define AUX7_OV             0xB0    // AUX7 overvoltage threshold
-#define LOT_NUM             0xBE    // Device Lot Number
-#define SER_NUM             0xC6    // Device Serial Number
-#define SCRATCH             0xC8    // User-defined data
-#define VSOFFSET            0xD2    // ADC voltage offset correction
+#define MIN_T_REFUP         2700    /**< [us] */
+#define TYP_T_REFUP         3500    /**< [us] */
+#define MAX_T_REFUP         4400    /**< [us] */
 
-// Registers (Page 69 [Nice])
-#define VSGAIN              0xD3    // ADC voltage gain correction
-#define AX0OFFSET           0xD4    // AUX0 ADC offset correction
-#define AX1OFFSET           0xD6    // AUX1 ADC offset correction
-#define AX2OFFSET           0xD7    // AUX2 ADC offset correction
-#define AX3OFFSET           0xDA    // AUX3 ADC offset correction
-#define AX4OFFSET           0xDC    // AUX4 ADC offset correction
-#define AX5OFFSET           0xDE    // AUX5 ADC offset correction
-#define AX6OFFSET           0xE0    // AUX6 ADC offset correction
-#define AX7OFFSET           0xE2    // AUX7 ADC offset correction
-#define TSTR_ECC            0xE6    // ECC Test Results
-#define CSUM                0xF0    // Saved checksum value
-#define CSUM_RSLT           0xF4    // Checksum Readout
-#define TEST_CSUM           0xF8    // Checksum Test Result
-#define EE_BURN             0xFA    // EEPROM Burn Count; up-counter
-#define MAGIC2              0xFC    // "Magic" value enables EEPROM write
+#define MAX_T_READY         10  /**< [us] */
+
+#define MIN_T_IDLE          4300    /**< [us] */
+#define TYP_T_IDLE          5500    /**< [us] */
+#define MAX_T_IDLE          6700    /**< [us] */
+
+#define T_CONV_CELL_ALL_7K                  2300    /**< [us] */
+#define T_CONV_CELL_ONE_7K                  405     /**< [us] */
+#define T_CONV_GPIO_ALL_PLUS_REFERENCE_7K   2300  /** [us] */
+#define T_CONV_GPIO_ONE_7K                  405 /** [us] */
+#define T_CONV_STATUS_ALL_7K                1600   /** [us] */
+#define T_CONV_STATUS_ONE_7K                405    /** [us] */
 
 // Commands
-#define SAMPLE_REQUEST      0x1     // Request sampling of voltage values
+#define WRCFGA      0x0001  /** Write to Configuration Register (CFGR) */
+#define RDCFGA      0x0002  /** Read the Configuration Register (CFGR) */
+#define RDCVA       0x0004  /** Read the Cell Voltage Register A (CVAR) */
+#define RDCVB       0x0006  /** Read the Cell Voltage Register B (CVBR) */
+#define RDCVC       0x0008  /** Read the Cell Voltage Register C (CBCR) */
+#define RDCVD       0x000A  /** Read the Cell Voltage Register D (CBDR) */
+#define RDAUXA      0x000C  /** Read the Auxiliary Register Group A (AVAR) */
+#define RDAUXB      0x000E  /** Read the Auxiliary Register Group B (AVBR) */
+#define RDSTATA     0x0010  /** Read the Status Register Group A (STAR) */
+#define RDSTATB     0x0012  /** Read the Status Register Group B (STBR) */
+#define WRSCTRL     0x0014  /** Write to the S Control Register Group (SCTRL) */
+#define WRPWM       0x0020  /** Write to the PWM Register Group (PWMR) */
+#define RDSCTRL     0x0016  /** Read the S Control Register Group (SCTRL) */
+#define RDPWM       0x0022  /** Read the PWM Register Group (PWMR) */
+#define STSCTRL     0x0019  /** Start S Control pulsing and poll status */
+#define CLRSCTRL    0x0018  /** Clear S Control register */
+#define CLRCELL     0x0711 /** Clear Cell Voltage Register Groups */
+#define CLRAUX      0x0712 /** Clear Auxiliary Register Groups */
+#define CLRSTAT     0x0713 /** Clear Status Register Groups */
+#define PLADC       0x0714 /** Poll ADC Conversion Status */
+#define DIAGN       0x0715 /** Diagnose MUX and Poll Status */
+#define WRCOMM      0x0721 /** Write COMM Register Group */
+#define RDCOMM      0x0722 /** Read COMM Register Group */
+#define STCOMM      0x0723 /** Start I2C /SPI Communication */
+
+// Macros
+#define ADCV(MD,DCP,CH)         (0x260 | (MD<<7) | (DCP<<4) | (CH))
+#define ADOW(MD,PUP,DCP,CH)     (0x228 | (MD<<7) | (PUP<<6) | (DCP<<4) | (CH))
+#define CVST(MD,ST)             (0x207 | (MD<<7) | (ST<<5))
+#define ADOL(MD,DCP)            (0x201 | (MD<<7) | (DCP<<4))
+#define ADAX(MD,CHG)            (0x460 | (MD<<7) | (CHG))
+#define ADAXD(MD,CHG)           (0x400 | (MD<<7) | (CHG))
+#define AXST(MD,ST)             (0x407 | (MD<<7) | (ST<<5))
+#define ADSTAT(MD,CHST)         (0x468 | (MD<<7) | (CHST))
+#define ADSTATD(MD,CHST)        (0x408 | (MD<<7) | (CHST))
+#define STATS(MD,ST)            (0x40F | (MD<<7) | (ST<<5))
+#define ADCVAX(MD,DCP)          (0x46F | (MD<<7) | (DCP<<4))
+#define VUV(voltage_low)        ((voltage_low * 10000 / 16) - 1)
+#define VOV(voltage_high)       (voltage_high * 10000 / 16)
+#define ADCVSC(MD,DCP)          (0x467 | (MD<<7) | (DCP<<4))
+#define byte_combine(msb, lsb)  ((msb << 8) | lsb)
 
 // Enumerations
-typedef enum {
-    INIT,                           // Initialization state
-    SLEEP,                          // Sleep state
-    SAMPLE,                         // Sampling values
-    WAIT_A,                         // Wait state
-    AFE_STATE_COUNT                 // Must be last
-} afe_state_t;
+enum {
+	ALL_CELLS,
+	CELLS_1_7,
+	CELLS_2_8,
+	CELLS_3_9,
+	CELLS_4_10,
+	CELLS_5_11,
+	CELLS_6_12
+};
 
-// Precomputed Values
-float scale_factor;                 // (2 * V_REF) / 65535
+enum {
+	DISCHARGE_NOT_PERMITTED,
+	DISCHARGE_PERMITTED
+};
 
-// Externs
-extern UART_HandleTypeDef huart1;   // UART 1 handle
+enum LTC6811_COMMAND_MD{
+    MD_MODE_0 = 0,
+    MD_MODE_1 = 1,
+    MD_FAST = 1,
+    MD_MODE_2 = 2,
+    MD_NORMAL = 2,
+    MD_MODE_3 = 3,
+    MD_FILTERED = 3,
+};
+
+enum LTC6811_COMMAND_DCP{
+    DCP_DISCHARGE_NOT_PERMITTED = 0,
+    DCP_DISCHARGE_PERMITTED = 1,
+};
+
+enum LTC6811_COMMAND_CH{
+    CH_ALL_CELLS = 0,
+    CH_CELLS_1_7 = 1,
+    CH_CELLS_2_8 = 2,
+    CH_CELLS_3_9 = 3,
+    CH_CELLS_4_10 = 4,
+    CH_CELLS_5_11 = 5,
+    CH_CELLS_6_12 = 6,
+};
+
+enum LTC6811_COMMAND_PUP{
+    PUP_PULL_DOWN = 0,
+    PUP_PULL_UP = 1,
+};
+
+enum LTC6811_COMMAND_ST{
+    ST_SELF_TEST1 = 1,
+    ST_SELF_TEST2 = 2,
+};
+
+enum LTC6811_COMMAND_CHG{
+    CHG_ALL = 0,
+    CHG_GPIO1 = 1,
+    CHG_GPIO2 = 2,
+    CHG_GPIO3 = 3,
+    CHG_GPIO4 = 4,
+    CHG_GPIO5 = 5,
+    CHG_2ND_REFERENCE = 6,
+};
+
+enum LTC6811_COMMAND_CHST{
+    CHST_SC_ITMP_VA_VD = 0,
+    CHST_SC = 1,
+    CHST_ITMP = 2,
+    CHST_VA = 3,
+    CHST_VD = 4,
+};
+
+typedef enum LTC6811_core_state_enum{
+    CORE_SLEEP_STATE,
+    CORE_STANDBY_STATE,
+    CORE_REFUP_STATE,
+    CORE_MEASURE_STATE,
+} LTC6811_Core_State;
+
+typedef enum LTC6811_isoSPI_state_enum{
+    ISOSPI_IDLE_STATE,
+    ISOSPI_READY_STATE,
+    ISOSPI_ACTIVE_STATE,
+} LTC6811_isoSPI_State;
 
 // Prototypes
-void initAfe();                     // Initializes the AFE and ups baud on first boot
-void afeProcess();                  // Communicates with AFE and pulls ADC values
-void calcBalance();                 // Determines which cells require balancing
+int afeInit();
+void afeTask();
+void afeWakeup();
+void broadcastPoll(uint16_t command);
+void broadcastWrite(uint16_t command, uint16_t size, uint8_t* data);
+int broadcastRead(uint16_t command, uint16_t size, uint8_t* data);
+
+// PEC Table
+static const uint16_t crc15Table[256] = {0x0,0xc599, 0xceab, 0xb32, 0xd8cf, 0x1d56, 0x1664, 0xd3fd, 0xf407, 0x319e,
+0x3aac, 0xff35, 0x2cc8, 0xe951, 0xe263, 0x27fa, 0xad97, 0x680e, 0x633c, 0xa6a5, 0x7558, 0xb0c1, 0xbbf3, 0x7e6a, 0x5990,
+0x9c09, 0x973b, 0x52a2, 0x815f, 0x44c6, 0x4ff4, 0x8a6d, 0x5b2e,0x9eb7, 0x9585, 0x501c, 0x83e1, 0x4678, 0x4d4a, 0x88d3,
+0xaf29, 0x6ab0, 0x6182, 0xa41b, 0x77e6, 0xb27f, 0xb94d, 0x7cd4, 0xf6b9, 0x3320, 0x3812, 0xfd8b, 0x2e76, 0xebef, 0xe0dd,
+0x2544, 0x2be,  0xc727, 0xcc15, 0x98c,  0xda71, 0x1fe8, 0x14da, 0xd143, 0xf3c5, 0x365c, 0x3d6e, 0xf8f7, 0x2b0a, 0xee93,
+0xe5a1, 0x2038, 0x7c2,  0xc25b, 0xc969, 0xcf0,  0xdf0d, 0x1a94, 0x11a6, 0xd43f, 0x5e52, 0x9bcb, 0x90f9, 0x5560, 0x869d,
+0x4304, 0x4836, 0x8daf, 0xaa55, 0x6fcc, 0x64fe, 0xa167, 0x729a, 0xb703, 0xbc31, 0x79a8, 0xa8eb, 0x6d72, 0x6640, 0xa3d9,
+0x7024, 0xb5bd, 0xbe8f, 0x7b16, 0x5cec, 0x9975, 0x9247, 0x57de, 0x8423, 0x41ba, 0x4a88, 0x8f11, 0x57c,  0xc0e5, 0xcbd7,
+0xe4e,  0xddb3, 0x182a, 0x1318, 0xd681, 0xf17b, 0x34e2, 0x3fd0, 0xfa49, 0x29b4, 0xec2d, 0xe71f, 0x2286, 0xa213, 0x678a,
+0x6cb8, 0xa921, 0x7adc, 0xbf45, 0xb477, 0x71ee, 0x5614, 0x938d, 0x98bf, 0x5d26, 0x8edb, 0x4b42, 0x4070, 0x85e9, 0xf84,
+0xca1d, 0xc12f, 0x4b6,  0xd74b, 0x12d2, 0x19e0, 0xdc79, 0xfb83, 0x3e1a, 0x3528, 0xf0b1, 0x234c, 0xe6d5, 0xede7, 0x287e,
+0xf93d, 0x3ca4, 0x3796, 0xf20f, 0x21f2, 0xe46b, 0xef59, 0x2ac0, 0xd3a,  0xc8a3, 0xc391, 0x608,  0xd5f5, 0x106c, 0x1b5e,
+0xdec7, 0x54aa, 0x9133, 0x9a01, 0x5f98, 0x8c65, 0x49fc, 0x42ce, 0x8757, 0xa0ad, 0x6534, 0x6e06, 0xab9f, 0x7862, 0xbdfb,
+0xb6c9, 0x7350, 0x51d6, 0x944f, 0x9f7d, 0x5ae4, 0x8919, 0x4c80, 0x47b2, 0x822b, 0xa5d1, 0x6048, 0x6b7a, 0xaee3, 0x7d1e,
+0xb887, 0xb3b5, 0x762c, 0xfc41, 0x39d8, 0x32ea, 0xf773, 0x248e, 0xe117, 0xea25, 0x2fbc, 0x846,  0xcddf, 0xc6ed, 0x374,
+0xd089, 0x1510, 0x1e22, 0xdbbb, 0xaf8,  0xcf61, 0xc453, 0x1ca,  0xd237, 0x17ae, 0x1c9c, 0xd905, 0xfeff, 0x3b66, 0x3054,
+0xf5cd, 0x2630, 0xe3a9, 0xe89b, 0x2d02, 0xa76f, 0x62f6, 0x69c4, 0xac5d, 0x7fa0, 0xba39, 0xb10b, 0x7492, 0x5368, 0x96f1,
+0x9dc3, 0x585a, 0x8ba7, 0x4e3e, 0x450c, 0x8095};
+
+// Read Commands
+static const uint16_t readCmd[3] = {RDCVA, RDCVB, RDCVC, RDCVD};
 
 #endif
