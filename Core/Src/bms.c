@@ -32,7 +32,10 @@ void bmsStatus()
 void initBMS()
 {
     memsetu((uint8_t*) &bms, 0, sizeof(bms));
-    afeInit();
+    while (afeInit() == HAL_ERROR) {
+        HAL_GPIO_WritePin(ERR_LED_GPIO_Port, ERR_LED_Pin, 1);
+        HAL_GPIO_WritePin(HEARTBEAT_GPIO_Port, HEARTBEAT_Pin, 0);
+    }
     
     schedInit(80000000);
     taskCreate(bmsStatus, 500);

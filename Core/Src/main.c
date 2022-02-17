@@ -108,6 +108,7 @@ int main(void)
   MX_USART2_UART_Init();
   MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
+  HAL_Delay(1000);
   initBMS();
   /* USER CODE END 2 */
 

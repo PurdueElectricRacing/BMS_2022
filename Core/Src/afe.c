@@ -28,6 +28,7 @@ int afeInit()
     }
 
     bms.afe_con = 1;
+    bms.error = 0;
 
 	broadcastPoll(DIAGN);
 
@@ -40,9 +41,9 @@ void afeTask()
     uint8_t  data[8];
     uint16_t valid_PEC;
 
-    broadcastPoll(ADCVSC(MD_NORMAL, DCP_DISCHARGE_NOT_PERMITTED));
+    broadcastPoll(ADCVSC(2, DISCHARGE_NOT_PERMITTED));
 
-    for (i = 0; i < 2; i++)
+    for (i = 0; i < 1; i++)
     {
         valid_PEC = broadcastRead(readCmd[i], LTC6811_REG_SIZE, data);
 
